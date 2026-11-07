@@ -81,9 +81,9 @@ drive it over CDP. `POST http://localhost:8765/apps/YouTube` opens the TV app as
 Releases: v2.0.0 (first, no updater), v2.1.0 (updater), v2.1.1 (shortcut app ID, so the media controls say
 "CastDesk"). The user's PC runs the installed copy from `C:\Program Files\CastDesk`.
 
-The installer (`installer/Package.wxs`) is per-machine: Program Files by default, a folder page to choose another, the folder kept for upgrades
-(`HKLM\Software\CastDesk\Installer\InstallFolder`), a firewall rule (local subnet), and CastDesk started through
-Explorer so it doesn't run elevated. Keep the `UpgradeCode`. The in-app updater reads the latest (non-draft,
+The installer (`installer/Package.wxs`) is per-machine: Program Files by default, a folder page to choose another,
+the folder kept for upgrades (`HKLM\Software\CastDesk\Installer\InstallFolder`), a firewall rule (local subnet), the
+Start menu shortcut with CastDesk's app ID, and CastDesk started through Explorer so it doesn't run elevated. Keep the `UpgradeCode`. The in-app updater reads the latest (non-draft,
 non-prerelease) release and needs its `.msi` asset; the installer won't downgrade, so never publish a lower version
 than the latest. To test the updater without a new release, build a copy with `-p:Version=1.9.0` and call
 `UpdateService` from it (don't run the installer). Don't install the MSI on the user's PC to test it unless asked
