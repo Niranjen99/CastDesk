@@ -38,7 +38,10 @@ drive it over CDP. `POST http://localhost:8765/apps/YouTube` opens the TV app as
 - `Media/WindowsMediaControls.cs`, `Interop/` (`AudioSessionRenamer`, `AppIdentity`, `ProcessTree`, `WindowTheme`):
   make Windows call the sound and media controls "CastDesk" instead of WebView2 / Unknown app.
 - `Configuration/` (`CastDeskOptions` = `%LOCALAPPDATA%\CastDesk\settings.json`, `DeviceIdentity`,
-  `StartupRegistration`), `UI/SettingsForm.cs`, `Diagnostics/AppLog.cs`.
+  `StartupRegistration`), `UI/SettingsForm.cs` (two columns, so it fits 1080p at 150%; keep it from growing taller),
+  `Diagnostics/AppLog.cs`.
+- `Updates/UpdateService.cs`: GitHub latest-release check, MSI download verified by size and the asset's SHA-256
+  digest, `msiexec /passive`. Used by Settings → Updates and the automatic check 30 s after start (tray balloon).
 
 ## Rules
 
@@ -67,8 +70,10 @@ drive it over CDP. `POST http://localhost:8765/apps/YouTube` opens the TV app as
 
 The installer (`installer/Package.wxs`) is per-machine: Program Files by default, a folder page to choose another, the
 folder kept for upgrades (`HKLM\Software\CastDesk\Installer\InstallFolder`), a firewall rule (local subnet), and
-CastDesk started through Explorer so it doesn't run elevated. Keep the `UpgradeCode`. The installer won't downgrade, so
-never publish a lower version than the latest. Don't install the MSI on the user's PC to test it unless asked (admin
+CastDesk started through Explorer so it doesn't run elevated. Keep the `UpgradeCode`. The in-app updater reads the
+latest (non-draft, non-prerelease) release and needs its `.msi` asset; the installer won't downgrade, so never publish
+a lower version than the latest. To test the updater without a new release, build a copy with `-p:Version=1.9.0` and
+call `UpdateService` from it (don't run the installer). Don't install the MSI on the user's PC to test it unless asked (admin
 rights, startup entry, firewall rule). Commit and publish only when the user asks.
 
 ## Docs

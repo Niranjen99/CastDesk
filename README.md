@@ -25,6 +25,7 @@
   - [Tray icon](#tray-icon)
   - [Volume mixer and media controls](#volume-mixer-and-media-controls)
 - [Settings](#settings)
+  - [Updates](#updates)
 - [Settings file](#settings-file)
 - [How it works](#how-it-works)
 - [Troubleshooting](#troubleshooting)
@@ -50,6 +51,7 @@ the phone connection are all YouTube's, as on a TV.
   instead of "Microsoft Edge WebView2" and "Unknown app". Media keys work.
 - **Signed in once:** your YouTube sign-in is kept in CastDesk's own browser profile.
 - **Settings window** for the name, window behaviour, starting with Windows, the port and the TV identity.
+- **Updates from inside the app:** CastDesk checks GitHub for a new version, and downloads, verifies and installs it.
 
 ## Requirements
 
@@ -70,8 +72,9 @@ and run it. Windows asks for admin rights, since CastDesk installs for all accou
   phones on your local network reach CastDesk. CastDesk is self-contained, so .NET doesn't need to be installed.
 - When it finishes, CastDesk starts in the notification area (tray). Only one copy runs at a time.
 
-**Upgrading:** run the newer MSI. It closes CastDesk, installs where the last version went, and keeps your settings and
-YouTube sign-in (`%LOCALAPPDATA%\CastDesk`).
+**Upgrading:** use **Settings… → Updates** in CastDesk (see [Updates](#updates)), or run a newer MSI yourself. Either
+way it closes CastDesk, installs where the last version went, starts it again, and keeps your settings and YouTube
+sign-in (`%LOCALAPPDATA%\CastDesk`). Windows asks for admin rights each time.
 
 **Uninstalling:** **Settings → Apps → CastDesk → Uninstall**. That removes the program, the firewall rule and the
 startup entry. Your settings, sign-in and log stay in `%LOCALAPPDATA%\CastDesk`; delete that folder to remove them too.
@@ -142,7 +145,7 @@ by program file instead, such as SteelSeries Sonar, still show "Microsoft Edge W
 ## Settings
 
 Open **Settings…** from the tray menu. Changes take effect when you click **Save**; there's no need to restart
-CastDesk.
+CastDesk. The general settings and updates are on the left, the advanced ones on the right.
 
 ![CastDesk Settings window](docs/screenshots/settings.png)
 
@@ -151,11 +154,28 @@ CastDesk.
 | Name in your phone's Cast menu | CastDesk-*PC name* | What phones list. They may show the old name for a few minutes after a change. |
 | Go fullscreen when a cast starts | Off | Switches the window to fullscreen whenever a phone casts. |
 | Hide the window when casting stops | On | Hides the window to the tray 3 seconds after the phone stops casting. |
-| Start CastDesk when I sign in to Windows | Off | Adds CastDesk to your startup apps, starting quietly in the tray. |
+| Start CastDesk when I sign in to Windows | Off (the installer offers to turn it on) | Adds CastDesk to your startup apps, starting quietly in the tray. |
+| Check for updates automatically | On | Checks for a newer release 30 seconds after CastDesk starts (see [Updates](#updates)). |
 | Port phones connect to | 8765 | If Windows has reserved it or another app uses it, CastDesk picks a free one. |
 | TV identity (user agent) YouTube sees | A Chromecast with Google TV | Change it only if YouTube stops showing its TV app; **Use the default** puts it back. |
 
 **Open log folder** opens `%LOCALAPPDATA%\CastDesk`, which holds the log.
+
+### Updates
+
+The **Updates** section shows which version you have.
+
+- **Check for updates** looks for a newer [release on GitHub](https://github.com/Shyam-Sangeeth/CastDesk/releases).
+- If there is one, **Download and install** downloads its installer and checks it: the size, and the SHA-256 checksum
+  GitHub publishes. It then runs the installer. Windows asks for admin rights, then CastDesk closes, is upgraded with
+  your settings and sign-in kept, and starts again. Closing the Settings window during the download cancels it.
+- **What's new** opens the release notes.
+- With **Check for updates automatically** on (the default), CastDesk checks once, 30 seconds after it starts. If
+  there's a newer version, it shows a notification; click it to open Settings and update. A failed check is only
+  written to the log.
+
+Updating works for CastDesk installed with the MSI. A copy you built yourself also offers updates, but installing one
+adds a separate installed copy.
 
 ## Settings file
 
@@ -163,7 +183,7 @@ Everything CastDesk keeps is in `%LOCALAPPDATA%\CastDesk`:
 
 | File | What it holds |
 |---|---|
-| `settings.json` | The settings above: `FriendlyName`, `FullscreenOnCast`, `HideWhenCastingStops`, `DialPort`, `UserAgent` (empty means the default). Missing fields keep their defaults. |
+| `settings.json` | The settings above: `FriendlyName`, `FullscreenOnCast`, `HideWhenCastingStops`, `CheckForUpdates`, `DialPort`, `UserAgent` (empty means the default). Missing fields keep their defaults. |
 | `device-id.txt` | The ID phones remember CastDesk by. Keep it, or phones will list CastDesk twice for a while. |
 | `WebView2\` | The TV app's browser profile, with your YouTube sign-in. Deleting it signs you out. |
 | `castdesk.log` | The log. A new one starts at 1 MB, keeping the previous one as `castdesk.log.old`. |
@@ -267,6 +287,8 @@ Configuration/
   StartupRegistration.cs  "Start CastDesk when I sign in"
 Diagnostics/
   AppLog.cs            Writes %LOCALAPPDATA%\CastDesk\castdesk.log
+Updates/
+  UpdateService.cs     GitHub release check, verified installer download, runs the installer
 UI/
   SettingsForm.cs      The Settings window
 Interop/

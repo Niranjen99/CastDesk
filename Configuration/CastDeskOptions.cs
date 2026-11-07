@@ -38,6 +38,9 @@ public sealed class CastDeskOptions
     /// <summary>Hide the window to the tray a few seconds after the phone stops casting.</summary>
     public bool HideWhenCastingStops { get; set; } = true;
 
+    /// <summary>Check GitHub for a newer release shortly after CastDesk starts, and offer it in a notification.</summary>
+    public bool CheckForUpdates { get; set; } = true;
+
     /// <summary>
     /// A Chromecast with Google TV running YouTube's TV engine (Cobalt). youtube.com/tv only serves its TV
     /// app to TV browsers, and this identity was tested on 2026-11-07: sign-in, playback and casting work.

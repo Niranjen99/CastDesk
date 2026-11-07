@@ -1,15 +1,18 @@
 using System.Diagnostics;
 using CastDesk.Configuration;
+using CastDesk.Diagnostics;
+using CastDesk.Updates;
 
 namespace CastDesk.UI;
 
 /// <summary>
-/// The Settings window (tray menu → Settings…). Edits a copy of the settings; <see cref="Result"/> holds
-/// the new values after Save.
+/// The Settings window (tray menu → Settings…), in two columns: general settings and updates on the left,
+/// advanced ones on the right. Edits a copy of the settings; <see cref="Result"/> holds the new values after Save.
+/// Updates are checked and installed straight away, without Save.
 /// </summary>
 internal sealed class SettingsForm : Form
 {
-    private const int FieldWidth = 440;
+    private const int FieldWidth = 400;
 
     private readonly TextBox _nameBox = new() { Width = FieldWidth, MaxLength = CastDeskOptions.MaxFriendlyNameLength };
     private readonly CheckBox _fullscreenOnCastBox = new() { Text = "Go fullscreen when a cast starts", AutoSize = true };
@@ -17,11 +20,25 @@ internal sealed class SettingsForm : Form
     private readonly CheckBox _startWithWindowsBox = new() { Text = "Start CastDesk when I sign in to Windows", AutoSize = true };
     private readonly NumericUpDown _portBox = new() { Minimum = CastDeskOptions.MinimumPort, Maximum = CastDeskOptions.MaximumPort, Width = 100 };
     private readonly TextBox _userAgentBox = new() { Width = FieldWidth, Height = 76, Multiline = true, ScrollBars = ScrollBars.Vertical, WordWrap = true };
-    private readonly CastDeskOptions _original;
 
-    public SettingsForm(CastDeskOptions current, bool startsWithWindows)
+    private readonly Label _updateStatus = new() { AutoSize = true, MaximumSize = new Size(FieldWidth, 0), Margin = new Padding(0, 2, 0, 4) };
+    private readonly Button _checkUpdatesButton = new() { Text = "Check for updates", AutoSize = true, Margin = new Padding(0, 0, 6, 0) };
+    private readonly Button _installUpdateButton = new() { AutoSize = true, Visible = false, Margin = new Padding(0, 0, 6, 0) };
+    private readonly LinkLabel _whatsNewLink = new() { Text = "What's new", AutoSize = true, Margin = new Padding(0, 6, 0, 0) };
+    private readonly ProgressBar _downloadProgress = new() { Width = FieldWidth, Height = 12, Visible = false, Margin = new Padding(0, 6, 0, 2) };
+    private readonly CheckBox _autoCheckUpdatesBox = new() { Text = "Check for updates automatically", AutoSize = true, Margin = new Padding(0, 6, 0, 0) };
+
+    private readonly CastDeskOptions _original;
+    private CancellationTokenSource? _downloadCancel;
+    private bool _updateBusy;
+
+    /// <param name="current">The settings to edit.</param>
+    /// <param name="startsWithWindows">Whether CastDesk currently starts at sign-in.</param>
+    /// <param name="knownUpdate">A newer release found by the automatic check, if any, so it can be installed at once.</param>
+    public SettingsForm(CastDeskOptions current, bool startsWithWindows, UpdateInfo? knownUpdate = null)
     {
         _original = current;
+        FoundUpdate = knownUpdate;
 
         SuspendLayout();
         AutoScaleDimensions = new SizeF(96F, 96F);
@@ -35,35 +52,56 @@ internal sealed class SettingsForm : Form
         StartPosition = FormStartPosition.CenterScreen;
         AutoSize = true;
         AutoSizeMode = AutoSizeMode.GrowAndShrink;
-        Padding = new Padding(16, 12, 16, 12);
+        Padding = new Padding(16, 4, 16, 12);
 
-        var layout = new TableLayoutPanel { AutoSize = true, ColumnCount = 1, Dock = DockStyle.Fill };
+        var left = Column();
+        left.Controls.Add(Heading("Receiver"));
+        left.Controls.Add(Label("Name in your phone's Cast menu"));
+        left.Controls.Add(_nameBox);
+        left.Controls.Add(Hint("Phones may keep showing the old name for a few minutes after a change."));
 
-        layout.Controls.Add(Heading("Receiver"));
-        layout.Controls.Add(Label("Name in your phone's Cast menu"));
-        layout.Controls.Add(_nameBox);
-        layout.Controls.Add(Hint("Phones may keep showing the old name for a few minutes after a change."));
+        left.Controls.Add(Heading("Window"));
+        left.Controls.Add(_fullscreenOnCastBox);
+        left.Controls.Add(_hideWhenStoppedBox);
 
-        layout.Controls.Add(Heading("Window"));
-        layout.Controls.Add(_fullscreenOnCastBox);
-        layout.Controls.Add(_hideWhenStoppedBox);
+        left.Controls.Add(Heading("Startup"));
+        left.Controls.Add(_startWithWindowsBox);
+        left.Controls.Add(Hint("CastDesk starts quietly in the notification area, ready for casts."));
 
-        layout.Controls.Add(Heading("Startup"));
-        layout.Controls.Add(_startWithWindowsBox);
-        layout.Controls.Add(Hint("CastDesk starts quietly in the notification area, ready for casts."));
+        left.Controls.Add(Heading("Updates"));
+        left.Controls.Add(_updateStatus);
+        var updateActions = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0, 2, 0, 0) };
+        updateActions.Controls.Add(_checkUpdatesButton);
+        updateActions.Controls.Add(_installUpdateButton);
+        updateActions.Controls.Add(_whatsNewLink);
+        left.Controls.Add(updateActions);
+        left.Controls.Add(_downloadProgress);
+        left.Controls.Add(_autoCheckUpdatesBox);
+        _checkUpdatesButton.Click += async (_, _) => await CheckForUpdatesAsync();
+        _installUpdateButton.Click += async (_, _) => await InstallUpdateAsync();
+        _whatsNewLink.LinkClicked += (_, _) => OpenInBrowser(FoundUpdate?.PageUrl ?? UpdateService.ReleasesPageUrl);
 
-        layout.Controls.Add(Heading("Advanced"));
-        layout.Controls.Add(Label("Port phones connect to"));
-        layout.Controls.Add(_portBox);
-        layout.Controls.Add(Hint("Default 8765. If Windows has reserved the port or another app uses it, CastDesk picks a free one."));
-        layout.Controls.Add(Label("TV identity (user agent) YouTube sees"));
-        layout.Controls.Add(_userAgentBox);
-        var resetUserAgentButton = new Button { Text = "Use the default", AutoSize = true, Margin = new Padding(3, 4, 3, 3) };
+        var right = Column();
+        right.Margin = new Padding(32, 0, 0, 0);
+        right.Controls.Add(Heading("Advanced"));
+        right.Controls.Add(Label("Port phones connect to"));
+        right.Controls.Add(_portBox);
+        right.Controls.Add(Hint("Default 8765. If Windows has reserved the port or another app uses it, CastDesk picks a free one."));
+        right.Controls.Add(Label("TV identity (user agent) YouTube sees"));
+        right.Controls.Add(_userAgentBox);
+        var resetUserAgentButton = new Button { Text = "Use the default", AutoSize = true, Margin = new Padding(0, 4, 3, 3) };
         resetUserAgentButton.Click += (_, _) => _userAgentBox.Text = CastDeskOptions.DefaultUserAgent;
-        layout.Controls.Add(resetUserAgentButton);
-        layout.Controls.Add(Hint("Change this only if YouTube stops showing its TV app."));
+        right.Controls.Add(resetUserAgentButton);
+        right.Controls.Add(Hint("Change this only if YouTube stops showing its TV app."));
 
-        layout.Controls.Add(CreateButtonRow());
+        var layout = new TableLayoutPanel { AutoSize = true, ColumnCount = 2, RowCount = 2, Dock = DockStyle.Fill };
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+        layout.Controls.Add(left, 0, 0);
+        layout.Controls.Add(right, 1, 0);
+        var buttonRow = CreateButtonRow();
+        layout.Controls.Add(buttonRow, 0, 1);
+        layout.SetColumnSpan(buttonRow, 2);
         Controls.Add(layout);
 
         _nameBox.Text = current.FriendlyName;
@@ -72,6 +110,10 @@ internal sealed class SettingsForm : Form
         _startWithWindowsBox.Checked = startsWithWindows;
         _portBox.Value = Math.Clamp(current.DialPort, CastDeskOptions.MinimumPort, CastDeskOptions.MaximumPort);
         _userAgentBox.Text = current.EffectiveUserAgent;
+        _autoCheckUpdatesBox.Checked = current.CheckForUpdates;
+        ShowUpdateState(FoundUpdate == null
+            ? $"You have CastDesk {UpdateService.CurrentVersion}."
+            : $"CastDesk {FoundUpdate.Version} is available (you have {UpdateService.CurrentVersion}).");
 
         ResumeLayout(performLayout: true);
     }
@@ -82,9 +124,110 @@ internal sealed class SettingsForm : Form
     /// <summary>Whether CastDesk should start at sign-in, after Save.</summary>
     public bool StartWithWindows => _startWithWindowsBox.Checked;
 
+    /// <summary>The newer release, if one was found (here or by the automatic check).</summary>
+    public UpdateInfo? FoundUpdate { get; private set; }
+
+    /// <summary>The update's installer is running: CastDesk should quit so it can be replaced.</summary>
+    public bool ExitForUpdate { get; private set; }
+
+    // ======================================================================
+    //  Updates
+    // ======================================================================
+
+    private async Task CheckForUpdatesAsync()
+    {
+        if (_updateBusy) return;
+        _updateBusy = true;
+        ShowUpdateState("Checking for updates…");
+        try
+        {
+            FoundUpdate = await UpdateService.CheckAsync();
+            ShowUpdateState(FoundUpdate == null
+                ? $"You're up to date (CastDesk {UpdateService.CurrentVersion})."
+                : $"CastDesk {FoundUpdate.Version} is available (you have {UpdateService.CurrentVersion}).");
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException or InvalidOperationException or KeyNotFoundException)
+        {
+            AppLog.Write("update", $"Update check failed: {exception.Message}");
+            ShowUpdateState($"Couldn't check for updates: {exception.Message}");
+        }
+        finally
+        {
+            _updateBusy = false;
+            ShowUpdateState(null);
+        }
+    }
+
+    private async Task InstallUpdateAsync()
+    {
+        if (FoundUpdate is not { } update || _updateBusy) return;
+        _updateBusy = true;
+        _downloadCancel = new CancellationTokenSource();
+        _downloadProgress.Value = 0;
+        _downloadProgress.Visible = true;
+        ShowUpdateState($"Downloading CastDesk {update.Version}…");
+        try
+        {
+            var installer = await UpdateService.DownloadAsync(update,
+                new Progress<double>(fraction => _downloadProgress.Value = (int)Math.Clamp(fraction * 100, 0, 100)),
+                _downloadCancel.Token);
+            ShowUpdateState($"Installing CastDesk {update.Version}… Windows asks for admin rights; CastDesk then closes and starts again.");
+            UpdateService.RunInstaller(installer);
+            ExitForUpdate = true;
+            DialogResult = DialogResult.Cancel;
+            Close();
+        }
+        catch (OperationCanceledException) when (_downloadCancel.IsCancellationRequested)
+        {
+            // The window was closed during the download.
+        }
+        catch (Exception exception) when (exception is HttpRequestException or IOException or InvalidDataException or TaskCanceledException or System.ComponentModel.Win32Exception)
+        {
+            AppLog.Write("update", $"Update failed: {exception.Message}");
+            ShowUpdateState($"Update failed: {exception.Message}");
+        }
+        finally
+        {
+            _updateBusy = false;
+            if (!IsDisposed)
+            {
+                _downloadProgress.Visible = false;
+                ShowUpdateState(null);
+            }
+        }
+    }
+
+    /// <summary>Shows <paramref name="status"/> (null keeps the current text) and which update buttons apply.</summary>
+    private void ShowUpdateState(string? status)
+    {
+        if (status != null) _updateStatus.Text = status;
+        _checkUpdatesButton.Enabled = !_updateBusy;
+        _installUpdateButton.Visible = FoundUpdate != null;
+        _installUpdateButton.Enabled = !_updateBusy;
+        if (FoundUpdate != null) _installUpdateButton.Text = $"Download and install {FoundUpdate.Version}";
+    }
+
+    protected override void OnFormClosing(FormClosingEventArgs e)
+    {
+        _downloadCancel?.Cancel();
+        base.OnFormClosing(e);
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing) _downloadCancel?.Dispose();
+        base.Dispose(disposing);
+    }
+
+    private static void OpenInBrowser(string url) => Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+
+    // ======================================================================
+    //  Save, Cancel and layout helpers
+    // ======================================================================
+
     private Control CreateButtonRow()
     {
-        var row = new TableLayoutPanel { AutoSize = true, ColumnCount = 3, Dock = DockStyle.Fill, Margin = new Padding(0, 16, 0, 0) };
+        var row = new TableLayoutPanel { AutoSize = true, ColumnCount = 3, Dock = DockStyle.Fill, Margin = new Padding(0, 18, 0, 0) };
         row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
         row.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
         row.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
@@ -122,6 +265,7 @@ internal sealed class SettingsForm : Form
         result.FriendlyName = name;
         result.FullscreenOnCast = _fullscreenOnCastBox.Checked;
         result.HideWhenCastingStops = _hideWhenStoppedBox.Checked;
+        result.CheckForUpdates = _autoCheckUpdatesBox.Checked;
         result.DialPort = (int)_portBox.Value;
         // Store an empty value for the default, so a future CastDesk with a newer default picks it up.
         var userAgent = _userAgentBox.Text.Trim();
@@ -131,6 +275,14 @@ internal sealed class SettingsForm : Form
         DialogResult = DialogResult.OK;
         Close();
     }
+
+    private static TableLayoutPanel Column() => new()
+    {
+        AutoSize = true,
+        ColumnCount = 1,
+        Dock = DockStyle.Top,
+        Margin = Padding.Empty,
+    };
 
     private static Label Heading(string text) => new()
     {

@@ -4,6 +4,7 @@ using CastDesk.Interop;
 using CastDesk.Media;
 using CastDesk.Tv;
 using CastDesk.UI;
+using CastDesk.Updates;
 
 namespace CastDesk;
 
@@ -18,16 +19,19 @@ public sealed class MainForm : Form
     private const string AppName = "CastDesk";
     private const int MaxTrayTextLength = 127;
     private const int HideAfterStopMilliseconds = 3000;
+    private const int UpdateCheckDelayMilliseconds = 30_000;
 
     private readonly CastDeskController _controller;
     private readonly TvAppView _tvApp;
     private readonly NotifyIcon _trayIcon;
     private readonly ToolStripMenuItem _statusMenuItem;
     private readonly System.Windows.Forms.Timer _hideAfterStopTimer;
+    private readonly System.Windows.Forms.Timer _updateCheckTimer;
     private readonly AudioSessionRenamer _audioSessionRenamer;
     private WindowsMediaControls? _mediaControls;
     private CastDeskOptions _options;
     private SettingsForm? _settingsForm;
+    private UpdateInfo? _availableUpdate;
 
     private bool _allowVisible;
     private bool _isExiting;
@@ -107,8 +111,39 @@ public sealed class MainForm : Form
         };
         _controller.ReceiverStatusChanged += (_, status) => SetReceiverStatus(status);
 
+        // A notification about a new version opens Settings, where it can be installed.
+        _trayIcon.BalloonTipClicked += (_, _) => { if (_availableUpdate != null) OpenSettings(); };
+        _updateCheckTimer = new System.Windows.Forms.Timer { Interval = UpdateCheckDelayMilliseconds };
+        _updateCheckTimer.Tick += async (_, _) =>
+        {
+            _updateCheckTimer.Stop();
+            await CheckForUpdatesQuietlyAsync();
+        };
+
         ResumeLayout(performLayout: false);
         _controller.Start();
+        if (_options.CheckForUpdates) _updateCheckTimer.Start();
+    }
+
+    /// <summary>
+    /// The automatic check, shortly after CastDesk starts (so it doesn't slow the start or Windows sign-in).
+    /// Shows a tray notification if a newer version is out; failures are only logged.
+    /// </summary>
+    private async Task CheckForUpdatesQuietlyAsync()
+    {
+        if (!_options.CheckForUpdates) return;
+        try
+        {
+            if (await UpdateService.CheckAsync() is not { } update) return;
+            _availableUpdate = update;
+            AppLog.Write("update", $"CastDesk {update.Version} is available.");
+            _trayIcon.ShowBalloonTip(15000, $"CastDesk {update.Version} is available",
+                "Click to open Settings and update.", ToolTipIcon.Info);
+        }
+        catch (Exception exception) when (exception is HttpRequestException or TaskCanceledException or System.Text.Json.JsonException or InvalidOperationException or KeyNotFoundException)
+        {
+            AppLog.Write("update", $"Automatic update check failed: {exception.Message}");
+        }
     }
 
     // ======================================================================
@@ -272,11 +307,19 @@ public sealed class MainForm : Form
             return;
         }
 
-        using var settingsForm = new SettingsForm(_options, StartupRegistration.IsEnabled);
+        using var settingsForm = new SettingsForm(_options, StartupRegistration.IsEnabled, _availableUpdate);
         _settingsForm = settingsForm;
         try
         {
-            if (settingsForm.ShowDialog() != DialogResult.OK || settingsForm.Result is not { } updated) return;
+            var dialogResult = settingsForm.ShowDialog();
+            _availableUpdate = settingsForm.FoundUpdate;
+            if (settingsForm.ExitForUpdate)
+            {
+                // The installer replaces CastDesk's files and starts the new version.
+                ExitApplication();
+                return;
+            }
+            if (dialogResult != DialogResult.OK || settingsForm.Result is not { } updated) return;
 
             var problems = new List<string>();
             if (updated.Save() is { } saveProblem) problems.Add($"Could not save the settings: {saveProblem}");
@@ -329,6 +372,7 @@ public sealed class MainForm : Form
         if (disposing)
         {
             _hideAfterStopTimer.Dispose();
+            _updateCheckTimer.Dispose();
             _audioSessionRenamer.Dispose();
             _trayIcon.ContextMenuStrip?.Dispose();
             _trayIcon.Dispose();

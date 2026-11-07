@@ -14,7 +14,7 @@ using (var logo = icon.ToBitmap())
 
 var settingsFormType = typeof(CastDesk.Configuration.CastDeskOptions).Assembly.GetType("CastDesk.UI.SettingsForm")!;
 var form = (Form)Activator.CreateInstance(settingsFormType, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance,
-    null, new object[] { new CastDesk.Configuration.CastDeskOptions(), false }, null)!;
+    null, new object?[] { new CastDesk.Configuration.CastDeskOptions(), false, null }, null)!;
 form.StartPosition = FormStartPosition.Manual;
 form.Location = new Point(-5000, -5000);
 form.ShowInTaskbar = false;
