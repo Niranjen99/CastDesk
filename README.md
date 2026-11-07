@@ -54,27 +54,35 @@ the phone connection are all YouTube's, as on a TV.
 ## Requirements
 
 - Windows 10 version 2004 or later, or Windows 11 (x64)
-- [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) (x64)
 - Microsoft Edge WebView2 Runtime (included with Windows 11; CastDesk tells you if it's missing)
 - The phone and the PC on the same network
 - The YouTube app on the phone
 
 ## Installing and running
 
-There's no installer yet. Build CastDesk (see [Building from source](#building-from-source)), or publish a folder you
-can copy elsewhere:
+Download `CastDesk-<version>-x64.msi` from the [latest release](https://github.com/Shyam-Sangeeth/CastDesk/releases/latest)
+and run it. Windows asks for admin rights, since CastDesk installs for all accounts on the PC.
 
-```powershell
-dotnet publish -c Release -o publish
-```
+- **Welcome screen:** **Start CastDesk when Windows starts** is ticked for a new install; untick it if you'd rather
+  start CastDesk yourself. You can change it later in [Settings](#settings).
+- **Where to install:** `C:\Program Files\CastDesk` by default; **Change...** picks another folder or drive.
+- The installer adds a Start menu shortcut, an entry in **Settings → Apps**, and a Windows Firewall rule that lets
+  phones on your local network reach CastDesk. CastDesk is self-contained, so .NET doesn't need to be installed.
+- When it finishes, CastDesk starts in the notification area (tray). Only one copy runs at a time.
 
-Run `CastDesk.exe`. It starts in the notification area (tray); only one copy runs at a time. To start it with Windows,
-turn on **Start CastDesk when I sign in to Windows** in [Settings](#settings).
+**Upgrading:** run the newer MSI. It closes CastDesk, installs where the last version went, and keeps your settings and
+YouTube sign-in (`%LOCALAPPDATA%\CastDesk`).
 
-### Allow CastDesk through Windows Firewall
+**Uninstalling:** **Settings → Apps → CastDesk → Uninstall**. That removes the program, the firewall rule and the
+startup entry. Your settings, sign-in and log stay in `%LOCALAPPDATA%\CastDesk`; delete that folder to remove them too.
 
-Phones reach CastDesk on TCP port 8765 (DIAL) and UDP port 1900 (SSDP discovery). The first time CastDesk starts,
-Windows asks whether to allow it: allow it. To add the rule yourself, from an administrator PowerShell:
+To run CastDesk without installing it, build it (see [Building from source](#building-from-source)).
+
+### Windows Firewall
+
+Phones reach CastDesk on TCP port 8765 (DIAL) and UDP port 1900 (SSDP discovery). The installer adds a firewall rule
+for this (local network only). If you run CastDesk without installing it, Windows asks the first time whether to allow
+it: allow it. To add the rule yourself, from an administrator PowerShell:
 
 ```powershell
 New-NetFirewallRule -DisplayName "CastDesk" -Direction Inbound -Program "<path to>\CastDesk.exe" -Action Allow -Profile Private,Public
@@ -211,14 +219,36 @@ dotnet build -c Release     # bin\Release\net10.0-windows10.0.19041.0\win-x64\Ca
 dotnet run                  # build and start (in the tray)
 ```
 
-A running CastDesk locks its exe: use **Exit** in the tray menu before building. The README screenshots are made by
-`tools/readme-shots` (see [tools/README.md](tools/README.md)).
+A running CastDesk locks its exe: use **Exit** in the tray menu (or `CastDesk.exe --exit`) before building. The README
+screenshots are made by `tools/readme-shots` (see [tools/README.md](tools/README.md)).
+
+### Building the installer
+
+The installer is built with [WiX Toolset](https://wixtoolset.org/) 5, which `dotnet build` downloads by itself:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File installer\build-installer.ps1             # version from CastDesk.csproj
+powershell -ExecutionPolicy Bypass -File installer\build-installer.ps1 -Version 2.1.0
+```
+
+It publishes a self-contained build into `installer\payload` and writes `installer\out\CastDesk-<version>-x64.msi`.
+`installer\make-installer-art.ps1` redraws the installer's artwork (`dialog.bmp`, `banner.bmp`).
+
+### Command-line options
+
+The installer uses these; each does its job and returns without starting CastDesk.
+
+| Option | What it does |
+|---|---|
+| `--exit` | Closes a running CastDesk and waits for it to quit |
+| `--add-startup` | Turns on **Start CastDesk when I sign in to Windows** |
+| `--remove-startup` | Turns it off |
 
 ## Project structure
 
 ```
 CastDesk.csproj
-Program.cs             Entry point: single instance, WebView2 check, app ID
+Program.cs             Entry point: single instance, command-line options, WebView2 check, app ID
 MainForm.cs            Player window, tray icon, fullscreen, show/hide on cast
 CastDeskController.cs  Runs discovery and passes launch/stop requests to the window
 Dial/
@@ -248,6 +278,11 @@ Assets/
   CastDesk.ico         Tray, window and Explorer icon
   logo-64.png          README logo (made by tools/readme-shots)
 docs/screenshots/      README screenshots
+installer/
+  Package.wxs          The MSI: install folder, shortcut, firewall rule, startup checkbox, screens
+  CastDesk.Installer.wixproj  WiX project (builds CastDesk-<version>-x64.msi)
+  build-installer.ps1  Publishes CastDesk and builds the MSI
+  make-installer-art.ps1  Draws dialog.bmp and banner.bmp
 tools/                 Helper scripts (README screenshots); see tools/README.md
 CLAUDE.md              Notes for working on CastDesk with Claude Code
 ```

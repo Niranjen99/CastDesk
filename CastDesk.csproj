@@ -10,7 +10,7 @@
     <UseWindowsForms>true</UseWindowsForms>
     <AssemblyName>CastDesk</AssemblyName>
     <RootNamespace>CastDesk</RootNamespace>
-    <!-- App version. -->
+    <!-- App and installer version (installer\build-installer.ps1 can override it). -->
     <Version>2.0.0</Version>
     <Product>CastDesk</Product>
     <Company>Shyam Sangeeth</Company>
@@ -20,8 +20,8 @@
     <PlatformTarget>x64</PlatformTarget>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>false</SelfContained>
-    <!-- Keep publish output, docs and helper scripts out of the app project. -->
-    <DefaultItemExcludes>$(DefaultItemExcludes);publish\**;docs\**;tools\**</DefaultItemExcludes>
+    <!-- Keep publish output, the installer, docs and helper scripts out of the app project. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);publish\**;installer\**;docs\**;tools\**</DefaultItemExcludes>
     <!-- The WebView2 package also references its WPF control, whose WindowsBase version differs from
          WinForms'. CastDesk uses only the WinForms control, so the conflict is harmless. -->
     <MSBuildWarningsAsMessages>$(MSBuildWarningsAsMessages);MSB3277</MSBuildWarningsAsMessages>

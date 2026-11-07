@@ -10,15 +10,15 @@ A WinForms tray app (.NET 10, C#) that makes a Windows PC a **YouTube cast targe
 ```powershell
 dotnet build -c Debug       # bin\Debug\net10.0-windows10.0.19041.0\win-x64\CastDesk.exe
 dotnet build -c Release     # bin\Release\net10.0-windows10.0.19041.0\win-x64\CastDesk.exe
-dotnet publish -c Release -o publish
+powershell -ExecutionPolicy Bypass -File installer\build-installer.ps1   # MSI in installer\out (version from the csproj)
 ```
 
 `dotnet run --project tools/readme-shots` retakes the README images off-screen (see `tools/README.md`); new helper
 scripts go in `tools/`, which the app project excludes.
 
 There are no unit tests: check changes with a build, the log (`%LOCALAPPDATA%\CastDesk\castdesk.log`, `[dial]` lines
-show each phone request) and the user's phone. A running CastDesk locks its exe, so stop it before building
-(`taskkill /IM CastDesk.exe /F`); it starts hidden in the tray.
+show each phone request) and the user's phone. A running CastDesk locks its exe: `CastDesk.exe --exit` closes it (and
+waits); it always starts hidden in the tray. `--add-startup` / `--remove-startup` are for the installer.
 
 To inspect the TV app, start CastDesk once with
 `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS="--remote-debugging-port=9333 --remote-debugging-address=127.0.0.1"` and
@@ -58,6 +58,18 @@ drive it over CDP. `POST http://localhost:8765/apps/YouTube` opens the TV app as
 - **Don't steal focus without need:** the user may be gaming. Put CastDesk back the way it was (window or tray).
 - **Back up `%LOCALAPPDATA%\CastDesk\settings.json` before tests that change settings**, and restore it after.
 - Don't delete the WebView2 profile: it signs the user out of YouTube.
+
+## Releases
+
+1. Bump `<Version>` in `CastDesk.csproj`.
+2. Build the installer.
+3. Create a GitHub release `v<version>` with `CastDesk-<version>-x64.msi` attached.
+
+The installer (`installer/Package.wxs`) is per-machine: Program Files by default, a folder page to choose another, the
+folder kept for upgrades (`HKLM\Software\CastDesk\Installer\InstallFolder`), a firewall rule (local subnet), and
+CastDesk started through Explorer so it doesn't run elevated. Keep the `UpgradeCode`. The installer won't downgrade, so
+never publish a lower version than the latest. Don't install the MSI on the user's PC to test it unless asked (admin
+rights, startup entry, firewall rule). Commit and publish only when the user asks.
 
 ## Docs
 

@@ -9,16 +9,35 @@ internal static class Program
     // Two copies would fight over the DIAL port and the phone's session, so only one may run.
     private const string SingleInstanceMutexName = @"Local\CastDesk.SingleInstance";
 
+    // Set by "CastDesk.exe --exit" to ask the running copy to quit (the installer uses it before replacing files).
+    private const string ExitEventName = @"Local\CastDesk.Exit";
+
+    /// <summary>
+    /// Command-line options, used by the installer:
+    /// <c>--exit</c> closes a running CastDesk and waits for it to quit;
+    /// <c>--add-startup</c> and <c>--remove-startup</c> turn "Start CastDesk when I sign in" on or off.
+    /// Each one does its job and returns without starting CastDesk.
+    /// </summary>
     [STAThread]
-    private static void Main()
+    private static int Main(string[] args)
     {
+        if (args.Length > 0)
+        {
+            switch (args[0].ToLowerInvariant())
+            {
+                case "--exit": return ExitRunningCopy();
+                case "--add-startup": return StartupRegistration.SetEnabled(true) == null ? 0 : 1;
+                case "--remove-startup": return StartupRegistration.SetEnabled(false) == null ? 0 : 1;
+            }
+        }
+
         using var singleInstanceMutex = new Mutex(initiallyOwned: true, SingleInstanceMutexName, out var isFirstInstance);
         if (!isFirstInstance)
         {
             MessageBox.Show(
                 "CastDesk is already running. Look for its icon in the notification area of the taskbar.",
                 "CastDesk", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            return;
+            return 0;
         }
 
         ApplicationConfiguration.Initialize();
@@ -36,12 +55,40 @@ internal static class Program
                 "CastDesk needs the Microsoft Edge WebView2 Runtime, which isn't installed.\n\n" +
                 "Install it from https://developer.microsoft.com/microsoft-edge/webview2/ and start CastDesk again.",
                 "CastDesk", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            return;
+            return 1;
         }
 
         // So Windows' media controls show "CastDesk" instead of "Unknown app".
         CastDesk.Interop.AppIdentity.Apply("CastDesk", Path.Combine(AppContext.BaseDirectory, "Assets", "CastDesk.ico"));
 
-        Application.Run(new MainForm(CastDeskOptions.Load()));
+        var mainForm = new MainForm(CastDeskOptions.Load());
+        using var exitEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ExitEventName);
+        var exitWait = ThreadPool.RegisterWaitForSingleObject(exitEvent, (_, _) =>
+        {
+            AppLog.Write("host", "Asked to exit (--exit).");
+            mainForm.BeginInvoke(mainForm.ExitApplication);
+        }, null, Timeout.Infinite, executeOnlyOnce: true);
+        Application.Run(mainForm);
+        exitWait.Unregister(null);
+        return 0;
+    }
+
+    /// <summary>Asks a running CastDesk to quit and waits up to 15 seconds for it. 0 when none is left running.</summary>
+    private static int ExitRunningCopy()
+    {
+        if (!EventWaitHandle.TryOpenExisting(ExitEventName, out var exitEvent)) return 0; // not running
+        using (exitEvent) exitEvent.Set();
+
+        using var mutex = new Mutex(false, SingleInstanceMutexName);
+        try
+        {
+            if (!mutex.WaitOne(TimeSpan.FromSeconds(15))) return 1;
+            mutex.ReleaseMutex();
+        }
+        catch (AbandonedMutexException)
+        {
+            // It quit without releasing the mutex; it's gone either way.
+        }
+        return 0;
     }
 }

@@ -298,7 +298,8 @@ public sealed class MainForm : Form
         }
     }
 
-    private void ExitApplication()
+    /// <summary>Quits CastDesk (tray menu Exit, or <c>CastDesk.exe --exit</c>).</summary>
+    public void ExitApplication()
     {
         _isExiting = true;
         Close();
