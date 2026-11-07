@@ -1,0 +1,39 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <!-- Windows 10 2004 or later: needed for Windows' media controls (SystemMediaTransportControls). -->
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWindowsForms>true</UseWindowsForms>
+    <AssemblyName>CastDesk</AssemblyName>
+    <RootNamespace>CastDesk</RootNamespace>
+    <!-- App version. -->
+    <Version>2.0.0</Version>
+    <Product>CastDesk</Product>
+    <Company>Shyam Sangeeth</Company>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <!-- Explorer, taskbar, tray and window icon. -->
+    <ApplicationIcon>Assets\CastDesk.ico</ApplicationIcon>
+    <PlatformTarget>x64</PlatformTarget>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+    <!-- Keep publish output, docs and helper scripts out of the app project. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);publish\**;docs\**;tools\**</DefaultItemExcludes>
+    <!-- The WebView2 package also references its WPF control, whose WindowsBase version differs from
+         WinForms'. CastDesk uses only the WinForms control, so the conflict is harmless. -->
+    <MSBuildWarningsAsMessages>$(MSBuildWarningsAsMessages);MSB3277</MSBuildWarningsAsMessages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Assets\CastDesk.ico" CopyToOutputDirectory="PreserveNewest" />
+    <EmbeddedResource Include="Tv\page-bridge.js" LogicalName="CastDesk.page-bridge.js" />
+  </ItemGroup>
+
+</Project>
