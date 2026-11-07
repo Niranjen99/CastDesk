@@ -10,8 +10,10 @@ namespace CastDesk.Interop;
 /// </summary>
 /// <remarks>
 /// Sets an explicit AppUserModelID for the process and registers its display name and icon under
-/// HKCU\Software\Classes\AppUserModelId\{id}, the documented place for unpackaged apps. Nothing is added
-/// to the Start menu.
+/// HKCU\Software\Classes\AppUserModelId\{id}, the documented place for unpackaged apps. That registry entry alone
+/// isn't enough for the media controls: they find the name through the Start menu shortcut whose
+/// System.AppUserModel.ID is this ID, which the installer creates (installer\Package.wxs). A copy run without
+/// installing has no such shortcut and still shows "Unknown app". Keep the ID in step with Package.wxs.
 /// </remarks>
 internal static class AppIdentity
 {

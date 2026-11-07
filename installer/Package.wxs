@@ -41,7 +41,11 @@
     <StandardDirectory Id="ProgramMenuFolder">
       <Component Id="StartMenuShortcut">
         <Shortcut Id="CastDeskShortcut" Name="CastDesk" Description="Cast YouTube from your phone to your PC"
-                  Target="[INSTALLFOLDER]CastDesk.exe" WorkingDirectory="INSTALLFOLDER" />
+                  Target="[INSTALLFOLDER]CastDesk.exe" WorkingDirectory="INSTALLFOLDER">
+          <!-- The same app ID CastDesk gives itself (Interop/AppIdentity.cs). Windows' media controls find an app's
+               name and icon through the Start menu shortcut with its ID; without this they show "Unknown app". -->
+          <ShortcutProperty Key="System.AppUserModel.ID" Value="CastDesk.Receiver" />
+        </Shortcut>
         <!-- Windows Installer wants a shortcut's key path under HKCU, even in a per-machine install. -->
         <RegistryValue Root="HKCU" Key="Software\CastDesk\Installer" Name="StartMenuShortcut" Type="integer" Value="1" KeyPath="yes" />
       </Component>

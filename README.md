@@ -145,7 +145,9 @@ Left-click shows the player. Right-click opens the menu:
 
 CastDesk shows up as **CastDesk** in Windows' volume mixer and in the media controls (Quick Settings and the volume
 flyout), with the video's title, play/pause and next/previous. The keyboard's media keys work too. Apps that name sound
-by program file instead, such as SteelSeries Sonar, still show "Microsoft Edge WebView2".
+by program file instead, such as SteelSeries Sonar, still show "Microsoft Edge WebView2". The media controls get the
+name from CastDesk's Start menu shortcut, which the installer creates (since 2.1.1), so a copy you run without
+installing shows there as "Unknown app".
 
 ## Settings
 
@@ -218,7 +220,8 @@ In the registry:
    Edge WebView2" in the volume mixer and "Unknown app" in the media controls. CastDesk renames its WebView2 audio
    sessions to "CastDesk" (Core Audio API), turns WebView2's media controls off, and registers its own on its window,
    fed by a small script in the TV app. So that Windows can name those controls, CastDesk uses the app ID
-   `CastDesk.Receiver` and registers its name and icon for it (no Start-menu entry).
+   `CastDesk.Receiver` and registers its name and icon for it. Windows' media controls look the ID up through the
+   Start menu shortcut that carries it (`System.AppUserModel.ID`), so the installer sets that ID on its shortcut.
 
 ## Troubleshooting
 
@@ -230,6 +233,9 @@ In the registry:
 - **YouTube says this browser isn't supported, or the TV app looks wrong:** YouTube may have stopped accepting the TV
   identity. Enter a different one under **Settings… → Advanced**.
 - **Playback problems:** use **Reload YouTube** in the tray menu.
+- **The media controls say "Unknown app":** install CastDesk 2.1.1 or later with the MSI (earlier installers didn't
+  give the Start menu shortcut CastDesk's app ID), and start CastDesk from the Start menu or the tray, not from a
+  copy you built.
 - **Couldn't check for updates:** CastDesk needs to reach `api.github.com`. GitHub also limits how often one network
   can ask (60 times an hour), so try again later. Lines marked `[update]` in the log show what happened. You can
   always download the latest MSI from the releases page and run it.

@@ -38,7 +38,10 @@ drive it over CDP. `POST http://localhost:8765/apps/YouTube` opens the TV app as
   Fullscreen overlay buttons.
 - `MainForm.cs`: window, tray menu, fullscreen, hide-to-tray (which unloads the TV app so nothing plays hidden).
 - `Media/WindowsMediaControls.cs`, `Interop/` (`AudioSessionRenamer`, `AppIdentity`, `ProcessTree`, `WindowTheme`):
-  make Windows call the sound and media controls "CastDesk" instead of WebView2 / Unknown app.
+  make Windows call the sound and media controls "CastDesk" instead of WebView2 / Unknown app. The media controls
+  only resolve the name through the installer's Start menu shortcut with `System.AppUserModel.ID` =
+  `CastDesk.Receiver` (`ShortcutProperty` in `Package.wxs`); the HKCU registration alone wasn't enough, so dev
+  builds still show "Unknown app". Keep the ID the same in both places.
 - `Configuration/` (`CastDeskOptions` = `%LOCALAPPDATA%\CastDesk\settings.json`, `DeviceIdentity`,
   `StartupRegistration`), `UI/SettingsForm.cs` (two columns, so it fits 1080p at 150%; keep it from growing taller),
   `Diagnostics/AppLog.cs`.
@@ -75,7 +78,8 @@ drive it over CDP. `POST http://localhost:8765/apps/YouTube` opens the TV app as
 4. Check the asset's `digest` matches `sha256sum` of the local MSI, and rebuild the dev copy so it isn't older than the
    release (or its own updater offers the release).
 
-Releases: v2.0.0 (first, no updater) and v2.1.0 (updater). The installer (`installer/Package.wxs`) is per-machine:
+Releases: v2.0.0 (first, no updater), v2.1.0 (updater), v2.1.1 (shortcut app ID, so the media controls say
+"CastDesk"). The user's PC runs the installed copy from `C:\Program Files\CastDesk`. The installer (`installer/Package.wxs`) is per-machine:
 Program Files by default, a folder page to choose another, the folder kept for upgrades
 (`HKLM\Software\CastDesk\Installer\InstallFolder`), a firewall rule (local subnet), and CastDesk started through
 Explorer so it doesn't run elevated. Keep the `UpgradeCode`. The in-app updater reads the latest (non-draft,
