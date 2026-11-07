@@ -233,6 +233,8 @@ In the registry:
 - **YouTube says this browser isn't supported, or the TV app looks wrong:** YouTube may have stopped accepting the TV
   identity. Enter a different one under **Settings… → Advanced**.
 - **Playback problems:** use **Reload YouTube** in the tray menu.
+- **"CastDesk is already running":** only one copy runs at a time. Look for its icon in the notification area (it may
+  be under the **^** arrow), or close the other copy with **Exit** in its tray menu.
 - **The media controls say "Unknown app":** install CastDesk 2.1.1 or later with the MSI (earlier installers didn't
   give the Start menu shortcut CastDesk's app ID), and start CastDesk from the Start menu or the tray, not from a
   copy you built.
@@ -264,13 +266,19 @@ dotnet run                  # build and start (in the tray)
 A running CastDesk locks its exe: use **Exit** in the tray menu (or `CastDesk.exe --exit`) before building. The README
 screenshots are made by `tools/readme-shots` (see [tools/README.md](tools/README.md)).
 
+If CastDesk is also installed, only one copy can run at a time: the second one says CastDesk is already running and
+closes. Exit the installed copy before starting your build (`& "C:\Program Files\CastDesk\CastDesk.exe" --exit`),
+and start it again from the Start menu when you're done. Both copies share the same settings, sign-in and device ID,
+so phones see one CastDesk either way. A build you run yourself shows as "Unknown app" in the media controls (it has no
+Start menu shortcut), and Windows Firewall asks about it the first time it starts.
+
 ### Building the installer
 
 The installer is built with [WiX Toolset](https://wixtoolset.org/) 5, which `dotnet build` downloads by itself:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File installer\build-installer.ps1             # version from CastDesk.csproj
-powershell -ExecutionPolicy Bypass -File installer\build-installer.ps1 -Version 2.1.0
+powershell -ExecutionPolicy Bypass -File installer\build-installer.ps1 -Version 2.2.0
 ```
 
 It publishes a self-contained build into `installer\payload` and writes `installer\out\CastDesk-<version>-x64.msi`.

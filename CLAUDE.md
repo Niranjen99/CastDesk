@@ -68,18 +68,27 @@ drive it over CDP. `POST http://localhost:8765/apps/YouTube` opens the TV app as
 - **Don't steal focus without need:** the user may be gaming. Put CastDesk back the way it was (window or tray).
 - **Back up `%LOCALAPPDATA%\CastDesk\settings.json` before tests that change settings**, and restore it after.
 - Don't delete the WebView2 profile: it signs the user out of YouTube.
+- **The user runs the installed copy** (`C:\Program Files\CastDesk`, 2.1.1, started at sign-in). Only one copy can
+  run (single-instance mutex), so to try a dev build: note whether the installed copy is running,
+  `"C:\Program Files\CastDesk\CastDesk.exe" --exit`, test the build, `--exit` it, then start the installed copy
+  again with `explorer.exe "C:\Program Files\CastDesk\CastDesk.exe"` (not elevated). Both use the same
+  `%LOCALAPPDATA%\CastDesk` data. A dev build shows "Unknown app" in the media controls and gets its own firewall
+  prompt (which takes focus), so prefer testing through the installed copy where you can.
 
 ## Releases
 
 1. Bump `<Version>` in `CastDesk.csproj`; update the README and retake screenshots if the UI changed.
 2. Commit and push, then build the installer (after the commit, so the exe's version carries the right commit hash).
 3. Create a GitHub release `v<version>` (title "CastDesk <version>", `--target main`) with
-   `CastDesk-<version>-x64.msi` attached. Notes: what changed in plain words, then an **Install:** line, as in v2.1.0.
+   `CastDesk-<version>-x64.msi` attached. Notes: what changed in plain words, then an **Install:** line, as in v2.1.1.
 4. Check the asset's `digest` matches `sha256sum` of the local MSI, and rebuild the dev copy so it isn't older than the
    release (or its own updater offers the release).
+5. The user updates the installed copy through **Settings → Updates**; the log's `[update]` lines and the
+   `CastDesk starting` line after them show it worked.
 
 Releases: v2.0.0 (first, no updater), v2.1.0 (updater), v2.1.1 (shortcut app ID, so the media controls say
-"CastDesk"). The user's PC runs the installed copy from `C:\Program Files\CastDesk`.
+"CastDesk"). The updater worked end to end on the user's PC for 2.1.0 → 2.1.1 (2026-11-07): download and SHA-256
+check, `msiexec /passive`, CastDesk back up 7 s later.
 
 The installer (`installer/Package.wxs`) is per-machine: Program Files by default, a folder page to choose another,
 the folder kept for upgrades (`HKLM\Software\CastDesk\Installer\InstallFolder`), a firewall rule (local subnet), the
@@ -87,8 +96,8 @@ Start menu shortcut with CastDesk's app ID, and CastDesk started through Explore
 the `UpgradeCode`. The in-app updater reads the latest (non-draft, non-prerelease) release and needs its `.msi`
 asset; the installer won't downgrade, so never publish a lower version than the latest. To test the updater without
 a new release, build a copy with `-p:Version=1.9.0` and call `UpdateService` from it (don't run the installer).
-Don't install the MSI on the user's PC to test it unless asked (admin rights, startup entry, firewall rule). Commit
-and publish only when the user asks.
+Don't run an MSI on the user's PC yourself unless asked (admin rights; it replaces the copy they use). Commit and
+publish only when the user asks.
 
 ## Docs
 
