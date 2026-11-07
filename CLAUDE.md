@@ -10,7 +10,7 @@ A WinForms tray app (.NET 10, C#) that makes a Windows PC a **YouTube cast targe
 ```powershell
 dotnet build -c Debug       # bin\Debug\net10.0-windows10.0.19041.0\win-x64\CastDesk.exe
 dotnet build -c Release     # bin\Release\net10.0-windows10.0.19041.0\win-x64\CastDesk.exe
-powershell -ExecutionPolicy Bypass -File installer\build-installer.ps1   # MSI in installer\out (version from the csproj)
+powershell -ExecutionPolicy Bypass -File installer\build-installer.ps1   # MSI in installer\out (csproj version)
 ```
 
 `dotnet run --project tools/readme-shots` retakes the README images off-screen (see `tools/README.md`); new helper
@@ -26,6 +26,8 @@ drive it over CDP. `POST http://localhost:8765/apps/YouTube` opens the TV app as
 
 ## Layout
 
+- `Program.cs`: single instance (mutex `Local\CastDesk.SingleInstance`), the installer's command-line options
+  (`--exit` sets the event `Local\CastDesk.Exit` and waits for the mutex), WebView2 check, app ID.
 - `CastDeskController.cs`: the receiver. Owns `Dial/SsdpAdvertiser` (discovery on UDP 1900) and
   `Dial/DialHttpServer` (device description, `GET/POST /apps/YouTube`, `DELETE /apps/YouTube/run`); events are posted
   to the UI thread.
@@ -42,6 +44,8 @@ drive it over CDP. `POST http://localhost:8765/apps/YouTube` opens the TV app as
   `Diagnostics/AppLog.cs`.
 - `Updates/UpdateService.cs`: GitHub latest-release check, MSI download verified by size and the asset's SHA-256
   digest, `msiexec /passive`. Used by Settings → Updates and the automatic check 30 s after start (tray balloon).
+- `installer/`: WiX 5 MSI (`Package.wxs`, `build-installer.ps1`, `make-installer-art.ps1`); `payload/` and `out/` are
+  build output. `tools/readme-shots`: README images. `docs/screenshots`: the README's screenshots.
 
 ## Rules
 
@@ -64,17 +68,21 @@ drive it over CDP. `POST http://localhost:8765/apps/YouTube` opens the TV app as
 
 ## Releases
 
-1. Bump `<Version>` in `CastDesk.csproj`.
-2. Build the installer.
-3. Create a GitHub release `v<version>` with `CastDesk-<version>-x64.msi` attached.
+1. Bump `<Version>` in `CastDesk.csproj`; update the README and retake screenshots if the UI changed.
+2. Commit and push, then build the installer (after the commit, so the exe's version carries the right commit hash).
+3. Create a GitHub release `v<version>` (title "CastDesk <version>", `--target main`) with
+   `CastDesk-<version>-x64.msi` attached. Notes: what changed in plain words, then an **Install:** line, as in v2.1.0.
+4. Check the asset's `digest` matches `sha256sum` of the local MSI, and rebuild the dev copy so it isn't older than the
+   release (or its own updater offers the release).
 
-The installer (`installer/Package.wxs`) is per-machine: Program Files by default, a folder page to choose another, the
-folder kept for upgrades (`HKLM\Software\CastDesk\Installer\InstallFolder`), a firewall rule (local subnet), and
-CastDesk started through Explorer so it doesn't run elevated. Keep the `UpgradeCode`. The in-app updater reads the
-latest (non-draft, non-prerelease) release and needs its `.msi` asset; the installer won't downgrade, so never publish
-a lower version than the latest. To test the updater without a new release, build a copy with `-p:Version=1.9.0` and
-call `UpdateService` from it (don't run the installer). Don't install the MSI on the user's PC to test it unless asked (admin
-rights, startup entry, firewall rule). Commit and publish only when the user asks.
+Releases: v2.0.0 (first, no updater) and v2.1.0 (updater). The installer (`installer/Package.wxs`) is per-machine:
+Program Files by default, a folder page to choose another, the folder kept for upgrades
+(`HKLM\Software\CastDesk\Installer\InstallFolder`), a firewall rule (local subnet), and CastDesk started through
+Explorer so it doesn't run elevated. Keep the `UpgradeCode`. The in-app updater reads the latest (non-draft,
+non-prerelease) release and needs its `.msi` asset; the installer won't downgrade, so never publish a lower version
+than the latest. To test the updater without a new release, build a copy with `-p:Version=1.9.0` and call
+`UpdateService` from it (don't run the installer). Don't install the MSI on the user's PC to test it unless asked
+(admin rights, startup entry, firewall rule). Commit and publish only when the user asks.
 
 ## Docs
 
@@ -82,4 +90,5 @@ rights, startup entry, firewall rule). Commit and publish only when the user ask
   window isn't screenshotted (opening the TV app plays sound).
 - Write user-facing text and docs in plain, specific English.
 - In this environment, write commit messages to a file and use `git commit -F` (Windows PowerShell adds a BOM
-  otherwise). Commit and publish only when the user asks.
+  otherwise). Python one-liners and heredocs have turned `\b`, `\r` and `\n` in paths into control characters here:
+  edit text containing backslashes with the Edit tool, and grep for control characters after scripted edits.

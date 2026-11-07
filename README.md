@@ -74,10 +74,15 @@ and run it. Windows asks for admin rights, since CastDesk installs for all accou
 
 **Upgrading:** use **Settings… → Updates** in CastDesk (see [Updates](#updates)), or run a newer MSI yourself. Either
 way it closes CastDesk, installs where the last version went, starts it again, and keeps your settings and YouTube
-sign-in (`%LOCALAPPDATA%\CastDesk`). Windows asks for admin rights each time.
+sign-in (`%LOCALAPPDATA%\CastDesk`). Windows asks for admin rights each time. CastDesk 2.0.0 has no updater, so install
+2.1.0 or later from the releases page by hand once; after that, updates come through Settings.
 
-**Uninstalling:** **Settings → Apps → CastDesk → Uninstall**. That removes the program, the firewall rule and the
-startup entry. Your settings, sign-in and log stay in `%LOCALAPPDATA%\CastDesk`; delete that folder to remove them too.
+**Uninstalling:** **Settings → Apps → CastDesk → Uninstall**. That removes the program, the Start menu shortcut, the
+firewall rule and the startup entry. Your settings, sign-in and log stay in `%LOCALAPPDATA%\CastDesk`; delete that
+folder to remove them too. The media-controls name under `HKCU\Software\Classes\AppUserModelId\CastDesk.Receiver` also
+stays (it's harmless; delete the key if you like).
+
+Release notes for each version are on the [releases page](https://github.com/Shyam-Sangeeth/CastDesk/releases).
 
 To run CastDesk without installing it, build it (see [Building from source](#building-from-source)).
 
@@ -174,8 +179,8 @@ The **Updates** section shows which version you have.
   there's a newer version, it shows a notification; click it to open Settings and update. A failed check is only
   written to the log.
 
-Updating works for CastDesk installed with the MSI. A copy you built yourself also offers updates, but installing one
-adds a separate installed copy.
+The installer is downloaded to `%TEMP%\CastDesk\update`. Updating is meant for CastDesk installed with the MSI: a copy
+you built yourself also offers updates, but installing one adds a separate, installed copy.
 
 ## Settings file
 
@@ -188,9 +193,14 @@ Everything CastDesk keeps is in `%LOCALAPPDATA%\CastDesk`:
 | `WebView2\` | The TV app's browser profile, with your YouTube sign-in. Deleting it signs you out. |
 | `castdesk.log` | The log. A new one starts at 1 MB, keeping the previous one as `castdesk.log.old`. |
 
-In the registry (current user only): the startup entry `CastDesk` under
-`HKCU\Software\Microsoft\Windows\CurrentVersion\Run` while **Start CastDesk when I sign in** is on, and CastDesk's name
-and icon for the media controls under `HKCU\Software\Classes\AppUserModelId\CastDesk.Receiver`.
+In the registry:
+
+| Key | What it holds |
+|---|---|
+| `HKCU\Software\Microsoft\Windows\CurrentVersion\Run`, value `CastDesk` | The startup entry, while **Start CastDesk when I sign in** is on |
+| `HKCU\Software\Classes\AppUserModelId\CastDesk.Receiver` | CastDesk's name and icon for Windows' media controls (written each time CastDesk starts) |
+| `HKLM\Software\CastDesk\Installer` | The install folder, so upgrades install in the same place (installer only) |
+| `HKCU\Software\CastDesk\Installer` | A marker for the Start menu shortcut (installer only) |
 
 ## How it works
 
@@ -220,6 +230,12 @@ and icon for the media controls under `HKCU\Software\Classes\AppUserModelId\Cast
 - **YouTube says this browser isn't supported, or the TV app looks wrong:** YouTube may have stopped accepting the TV
   identity. Enter a different one under **Settings… → Advanced**.
 - **Playback problems:** use **Reload YouTube** in the tray menu.
+- **Couldn't check for updates:** CastDesk needs to reach `api.github.com`. GitHub also limits how often one network
+  can ask (60 times an hour), so try again later. Lines marked `[update]` in the log show what happened. You can
+  always download the latest MSI from the releases page and run it.
+- **An update didn't install:** CastDesk closes as soon as the installer starts, so if you declined the admin prompt,
+  CastDesk isn't running. Start it from the Start menu (it's still the old version) and use **Download and install**
+  again.
 
 ## Limitations
 
