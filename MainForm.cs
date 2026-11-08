@@ -12,7 +12,7 @@ namespace CastDesk;
 /// The player window (YouTube's TV app) and the tray icon. CastDesk starts in the tray; the window comes
 /// to the front when a phone casts, and hides again a few seconds after the phone stops casting.
 /// F11 (or Alt+Enter) toggles fullscreen. Inside the TV app, Esc is its Back button. The window's close
-/// button hides it to the tray; only Exit in the tray menu quits.
+/// button hides it to the tray (see <see cref="CloseToTray"/>); only Exit in the tray menu quits.
 /// </summary>
 public sealed class MainForm : Form
 {
@@ -20,6 +20,9 @@ public sealed class MainForm : Form
     private const int MaxTrayTextLength = 127;
     private const int HideAfterStopMilliseconds = 3000;
     private const int UpdateCheckDelayMilliseconds = 30_000;
+    private const int PauseTimeoutMilliseconds = 3000;
+    private const int VideoPlayingInTrayMilliseconds = 1500;
+    private const int LeftVideoPageMilliseconds = 3000;
 
     private readonly CastDeskController _controller;
     private readonly TvAppView _tvApp;
@@ -32,6 +35,14 @@ public sealed class MainForm : Form
     private CastDeskOptions _options;
     private SettingsForm? _settingsForm;
     private UpdateInfo? _availableUpdate;
+
+    // Closed to the tray with the TV app still loaded (see CloseToTray).
+    private readonly System.Windows.Forms.Timer _pauseTimeoutTimer;
+    private readonly System.Windows.Forms.Timer _videoPlayingInTrayTimer;
+    private readonly System.Windows.Forms.Timer _leftVideoPageTimer;
+    private MediaState _mediaState = MediaState.Nothing;
+    private bool _inTrayWithVideo;
+    private bool _waitingForPause;
 
     private bool _allowVisible;
     private bool _isExiting;
@@ -62,7 +73,12 @@ public sealed class MainForm : Form
             _controller.ReportTvAppStopped();
             HideToTray();
         };
-        _tvApp.MediaStateChanged += (_, state) => _mediaControls?.Show(state);
+        _tvApp.MediaStateChanged += (_, state) =>
+        {
+            _mediaState = state;
+            _mediaControls?.Show(state);
+            if (_inTrayWithVideo) OnMediaStateInTray(state);
+        };
         _tvApp.FullscreenToggleRequested += (_, _) => ToggleFullscreen();
         _tvApp.PageFullscreenChanged += (_, isFullscreen) =>
         {
@@ -104,8 +120,31 @@ public sealed class MainForm : Form
         };
 
         _controller.LaunchRequested += (_, launchData) => OnLaunchRequested(launchData);
+        _pauseTimeoutTimer = new System.Windows.Forms.Timer { Interval = PauseTimeoutMilliseconds };
+        _pauseTimeoutTimer.Tick += (_, _) => OnPauseTimedOut();
+        _videoPlayingInTrayTimer = new System.Windows.Forms.Timer { Interval = VideoPlayingInTrayMilliseconds };
+        _videoPlayingInTrayTimer.Tick += (_, _) =>
+        {
+            _videoPlayingInTrayTimer.Stop();
+            AppLog.Write("tv", "A video is playing again; showing the window.");
+            ShowWindow();
+        };
+        _leftVideoPageTimer = new System.Windows.Forms.Timer { Interval = LeftVideoPageMilliseconds };
+        _leftVideoPageTimer.Tick += (_, _) =>
+        {
+            _leftVideoPageTimer.Stop();
+            AppLog.Write("tv", "The TV app left its video page while in the tray.");
+            HideToTray();
+        };
+
         _controller.StopRequested += (_, _) =>
         {
+            if (_inTrayWithVideo)
+            {
+                // Unload rather than open the home screen, whose previews would play in the tray.
+                HideToTray();
+                return;
+            }
             _tvApp.GoHome();
             if (_options.HideWhenCastingStops) _hideAfterStopTimer.Start();
         };
@@ -215,6 +254,7 @@ public sealed class MainForm : Form
     private void ShowWindow()
     {
         _hideAfterStopTimer.Stop();
+        LeaveTrayWithVideo();
         _allowVisible = true;
         if (!Visible) Show();
         if (WindowState == FormWindowState.Minimized)
@@ -233,15 +273,102 @@ public sealed class MainForm : Form
 
     /// <summary>
     /// Hides the window and unloads the TV app, so nothing (videos, home-screen previews) plays while
-    /// CastDesk sits in the tray. A cast or Show Player loads it again.
+    /// CastDesk sits in the tray. A cast or Show Player loads it again. The close button uses
+    /// <see cref="CloseToTray"/>, which keeps a video's cast going instead.
     /// </summary>
     private void HideToTray()
     {
         _hideAfterStopTimer.Stop();
+        LeaveTrayWithVideo();
         Hide();
         _tvApp.Unload();
         _mediaControls?.Show(MediaState.Nothing);
         _controller.ReportTvAppStopped(); // the phone's next cast launches the TV app again
+    }
+
+    /// <summary>
+    /// The window's close button. On the TV app's home screen (or anywhere without a video) it hides to the tray
+    /// and unloads the TV app, as <see cref="HideToTray"/>. With a video open, the TV app stays loaded and the
+    /// phone stays connected: music (YouTube marks songs, music videos and podcasts) keeps playing in the tray,
+    /// and any other video is paused. When a video plays again (from the phone, the media keys or Windows'
+    /// media controls), the window opens again.
+    /// </summary>
+    private void CloseToTray()
+    {
+        var state = _mediaState;
+        if (!state.Watching || !state.HasVideo)
+        {
+            HideToTray();
+            return;
+        }
+
+        _hideAfterStopTimer.Stop();
+        Hide();
+        _inTrayWithVideo = true;
+        if (state.Music)
+        {
+            AppLog.Write("tv", "Closed to the tray; the music keeps playing.");
+            return;
+        }
+
+        AppLog.Write("tv", "Closed to the tray; the video is paused until it plays again.");
+        if (!state.Playing) return;
+        // Until the TV app reports the pause, its "playing" reports are from before it.
+        _waitingForPause = true;
+        _pauseTimeoutTimer.Start();
+        _tvApp.SendMediaCommand("pause");
+    }
+
+    /// <summary>What the TV app reports while CastDesk is closed to the tray with a video open.</summary>
+    private void OnMediaStateInTray(MediaState state)
+    {
+        if (!state.Watching)
+        {
+            // Back on the home screen (the queue ended, say): unload, so its previews don't play in the tray.
+            _videoPlayingInTrayTimer.Stop();
+            if (!_leftVideoPageTimer.Enabled) _leftVideoPageTimer.Start();
+            return;
+        }
+        _leftVideoPageTimer.Stop();
+
+        if (_waitingForPause)
+        {
+            if (state.Playing) return;
+            _waitingForPause = false;
+            _pauseTimeoutTimer.Stop();
+        }
+
+        // A short wait, so a report from between two songs (before the next one's details load) doesn't count.
+        if (state.Playing && !state.Music)
+        {
+            if (!_videoPlayingInTrayTimer.Enabled) _videoPlayingInTrayTimer.Start();
+        }
+        else
+        {
+            _videoPlayingInTrayTimer.Stop();
+        }
+    }
+
+    /// <summary>The video didn't pause: show it rather than let it play unseen.</summary>
+    private void OnPauseTimedOut()
+    {
+        _pauseTimeoutTimer.Stop();
+        if (!_inTrayWithVideo || !_waitingForPause) return;
+        _waitingForPause = false;
+        if (_mediaState.Playing && !_mediaState.Music)
+        {
+            AppLog.Write("tv", "The video didn't pause in the tray; showing the window.");
+            ShowWindow();
+        }
+    }
+
+    private void LeaveTrayWithVideo()
+    {
+        _inTrayWithVideo = false;
+        _waitingForPause = false;
+        _pauseTimeoutTimer.Stop();
+        _videoPlayingInTrayTimer.Stop();
+        _leftVideoPageTimer.Stop();
     }
 
     private void SetReceiverStatus(string status)
@@ -354,7 +481,7 @@ public sealed class MainForm : Form
         if (!_isExiting && e.CloseReason == CloseReason.UserClosing)
         {
             e.Cancel = true;
-            HideToTray();
+            CloseToTray();
             return;
         }
         base.OnFormClosing(e);
@@ -373,6 +500,9 @@ public sealed class MainForm : Form
         {
             _hideAfterStopTimer.Dispose();
             _updateCheckTimer.Dispose();
+            _pauseTimeoutTimer.Dispose();
+            _videoPlayingInTrayTimer.Dispose();
+            _leftVideoPageTimer.Dispose();
             _audioSessionRenamer.Dispose();
             _trayIcon.ContextMenuStrip?.Dispose();
             _trayIcon.Dispose();

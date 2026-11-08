@@ -47,8 +47,12 @@ the phone connection are all YouTube's, as on a TV.
 - **Starts in the tray** and comes to the front when you cast; hides again a few seconds after you stop.
 - **Up to 4K** (2160p, up to 60 fps), and **HDR** when HDR is on in Windows' display settings. Pick the quality in
   the TV app's player settings; Auto may choose 4K even on a smaller screen.
-- **Keeps playing while minimized**, and the phone's controls still work.
-- **Nothing plays in the background:** hiding the window unloads the TV app.
+- **Keeps playing while minimized**, and the phone's controls still work. Previews on the TV app's home screen
+  stop until you restore the window.
+- **Music keeps playing in the tray:** close the window during a song and it keeps playing, with the phone still in
+  control. Close it during any other video and the video pauses; play it again from the phone and the window comes
+  back.
+- **Nothing else plays in the background:** closing the window on the home screen unloads the TV app.
 - **Fullscreen** with F11, Alt+Enter or a button, and a **Back** button for the TV app.
 - **Named "CastDesk" in Windows:** in the volume mixer and the media controls (with title, play/pause and next/previous),
   instead of "Microsoft Edge WebView2" and "Unknown app". Media keys work.
@@ -128,8 +132,8 @@ You can also use the TV app on the PC directly: **Show Player**, then the keyboa
 | F11, Alt+Enter, or the button in the top-right corner | Fullscreen on/off (the button appears when you move the mouse) |
 | Esc, or the arrow button in the top-left corner | The TV app's Back (the button appears when you move the mouse, except on the home screen) |
 | Arrow keys, Enter | Move around the TV app and pick |
-| Window close button | Hide to the tray. The TV app is unloaded, so nothing plays in the background; a cast or **Show Player** opens it again. Hiding during a cast ends that cast. |
-| Minimize | Keeps playing |
+| Window close button | Hide to the tray. During **music** (YouTube marks songs, music videos and podcast episodes), it keeps playing and the phone stays connected. During **any other video**, the video pauses and the phone stays connected; when it plays again (from the phone, the media keys or Windows' media controls), the window opens again. Anywhere else, such as the home screen, the TV app is unloaded so nothing plays in the background, and a cast or **Show Player** opens it again. |
+| Minimize | A video keeps playing. Previews on the home screen and in search stop until you restore the window. |
 
 ### Tray icon
 
@@ -225,6 +229,20 @@ In the registry:
    fed by a small script in the TV app. So that Windows can name those controls, CastDesk uses the app ID
    `CastDesk.Receiver` and registers its name and icon for it. Windows' media controls look the ID up through the
    Start menu shortcut that carries it (`System.AppUserModel.ID`), so the installer sets that ID on its shortcut.
+6. **Behaving like a TV.** The same script fixes two things that differ between a PC window and a TV:
+   - **Minimizing.** A minimized window counts as hidden, and the TV app stops its video while hidden (on a TV that
+     means you left the app). While a video is open (the TV app's `#/watch` page), the script tells the TV app
+     the page is visible, so the video keeps playing. Anywhere else it passes on the truth, so home-screen
+     previews stop.
+   - **Quality.** The TV app asks the browser whether it can play formats with details such as `width=3840`, and
+     also asks about impossible ones (`width=99999`) to check the answers. Chromium ignores those details and says
+     yes to everything, so the TV app wouldn't trust it and offered only up to 720p. The script says no to
+     impossible values, and to HDR unless Windows' HDR is on, so the TV app offers up to 4K.
+7. **Music in the tray.** The script also reports whether the open video is music: YouTube's player data gives songs,
+   music videos and podcast episodes a `musicVideoType` (for example `MUSIC_VIDEO_TYPE_OMV`), and other videos have
+   none. Closing the window during music only hides it; closing it during another video hides it and pauses the
+   video, and CastDesk shows the window again when that video plays. If the TV app goes back to its home screen
+   while CastDesk is in the tray, or the phone disconnects, CastDesk unloads the TV app.
 
 ## Troubleshooting
 
@@ -302,7 +320,7 @@ The installer uses these; each does its job and returns without starting CastDes
 ```
 CastDesk.csproj
 Program.cs             Entry point: single instance, command-line options, WebView2 check, app ID
-MainForm.cs            Player window, tray icon, fullscreen, show/hide on cast
+MainForm.cs            Player window, tray icon, fullscreen, show/hide on cast, music in the tray
 CastDeskController.cs  Runs discovery and passes launch/stop requests to the window
 Dial/
   SsdpAdvertiser.cs    SSDP: answers phones' searches and announces CastDesk
@@ -310,7 +328,8 @@ Dial/
   HttpMessages.cs      Minimal HTTP request reading and response writing
 Tv/
   TvAppView.cs         YouTube's TV app in WebView2, with the TV identity
-  page-bridge.js       Injected into the TV app: media state, fullscreen keys, Back and Fullscreen buttons
+  page-bridge.js       Injected into the TV app: media state, fullscreen keys, Back and Fullscreen buttons,
+                       videos playing while minimized, format answers (qualities above 720p)
   MediaState.cs        What the TV app is playing
 Media/
   WindowsMediaControls.cs  CastDesk's entry in Windows' media controls

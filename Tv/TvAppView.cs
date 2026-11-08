@@ -149,7 +149,7 @@ internal sealed class TvAppView : UserControl
             if (type.GetString() != "media") return;
             string Text(string name) => root.TryGetProperty(name, out var value) && value.ValueKind == System.Text.Json.JsonValueKind.String ? value.GetString() ?? "" : "";
             bool Flag(string name) => root.TryGetProperty(name, out var value) && value.ValueKind == System.Text.Json.JsonValueKind.True;
-            MediaStateChanged?.Invoke(this, new MediaState(Flag("hasVideo"), Flag("playing"), Text("title"), Text("artist"), Text("artwork"), Flag("hasNext"), Flag("hasPrevious")));
+            MediaStateChanged?.Invoke(this, new MediaState(Flag("hasVideo"), Flag("playing"), Text("title"), Text("artist"), Text("artwork"), Flag("hasNext"), Flag("hasPrevious"), Flag("watching"), Flag("music")));
         }
         catch (System.Text.Json.JsonException)
         {

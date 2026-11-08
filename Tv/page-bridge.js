@@ -1,12 +1,14 @@
 // Injected into YouTube's TV app by CastDesk. It:
-//   - reports what is playing, for Windows' media controls, and carries out their buttons;
-//   - keeps the page "visible" while the window is minimized, so the TV app keeps playing;
+//   - reports what is playing (and whether it is music), for Windows' media controls and for closing to the
+//     tray, and carries out their buttons;
+//   - keeps the page "visible" while a video is open and the window is minimized or closed to the tray, so the
+//     TV app keeps playing (home-screen previews still stop);
 //   - answers the TV app's format questions as a TV would, so it offers qualities above 720p;
 //   - catches F11 and Alt+Enter (WebView2 keeps keys to itself, so CastDesk's window never sees them);
 //   - shows Back (top-left) and Fullscreen (top-right) buttons while the mouse moves.
 //
 //   to CastDesk:   {"type":"media","hasVideo":true,"playing":true,"title":"…","artist":"…","artwork":"https://…",
-//                   "hasNext":true,"hasPrevious":false}
+//                   "hasNext":true,"hasPrevious":false,"watching":true,"music":false}
 //                  {"type":"fullscreen"}                 toggle fullscreen (key or button)
 //                  {"type":"back"}                       the Back button: CastDesk presses Esc
 //   from CastDesk: "play" | "pause" | "togglePlay" | "nexttrack" | "previoustrack"
@@ -31,6 +33,22 @@
     };
   }
 
+  // The TV app's video page (#/watch?v=…); everything else is the home screen, search and so on.
+  const isWatching = () => location.hash.startsWith('#/watch');
+
+  // YouTube marks songs, music videos and podcast episodes with a musicVideoType in the player data
+  // (MUSIC_VIDEO_TYPE_OMV, _ATV, _UGC, ...); other videos have none. The TV app's player element hands
+  // that data out through getPlayerResponse().
+  const isMusic = () => {
+    const player = document.getElementById('ytlr-player__player-container-player');
+    try {
+      const response = player && typeof player.getPlayerResponse === 'function' ? player.getPlayerResponse() : null;
+      return !!(response && response.videoDetails && response.videoDetails.musicVideoType);
+    } catch {
+      return false;
+    }
+  };
+
   const currentVideo = () => {
     const videos = Array.from(document.querySelectorAll('video'));
     return videos.find((video) => video.currentSrc && !video.ended) || videos[0] || null;
@@ -50,6 +68,8 @@
       artwork: artwork || '',
       hasNext: typeof actionHandlers.nexttrack === 'function',
       hasPrevious: typeof actionHandlers.previoustrack === 'function',
+      watching: isWatching(),
+      music: isWatching() && isMusic(),
     };
     const text = JSON.stringify(state);
     if (text === lastReport) return;
@@ -61,18 +81,41 @@
     document.addEventListener(name, report, true));
   setInterval(report, 1000);
 
-  // ---------- Keep playing while minimized ----------
+  // ---------- While minimized: videos keep playing, previews stop ----------
 
   // A minimized window makes the page hidden, and the TV app then unloads its video until the page is
-  // visible again (a TV app is only hidden when the user has left it). Closing the window still stops
-  // playback: CastDesk unloads the page. This script runs before the page's own, so its listener runs
-  // first and the TV app never sees the event.
-  Object.defineProperty(document, 'hidden', { configurable: true, get: () => false });
-  Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' });
-  Object.defineProperty(document, 'webkitHidden', { configurable: true, get: () => false });
-  Object.defineProperty(document, 'webkitVisibilityState', { configurable: true, get: () => 'visible' });
+  // visible again (on a TV, the app is only hidden when the user has left it). So while a video is open
+  // (the #/watch page), the TV app is told the page is visible and the video keeps playing. Anywhere else,
+  // such as the home screen, it is told the truth, so previews stop while CastDesk is minimized. Closing
+  // the window still stops everything: CastDesk unloads the page. This script runs before the page's own,
+  // so its listener runs first and the TV app only sees the visibility changes passed on here.
+  const reallyHidden = Object.getOwnPropertyDescriptor(Document.prototype, 'hidden').get;
+  const appearsHidden = () => reallyHidden.call(document) && !isWatching();
+  const appearsState = () => (appearsHidden() ? 'hidden' : 'visible');
+  Object.defineProperty(document, 'hidden', { configurable: true, get: appearsHidden });
+  Object.defineProperty(document, 'visibilityState', { configurable: true, get: appearsState });
+  Object.defineProperty(document, 'webkitHidden', { configurable: true, get: appearsHidden });
+  Object.defineProperty(document, 'webkitVisibilityState', { configurable: true, get: appearsState });
+
+  // Tell the TV app when what it should see changes: the window is minimized or restored, or a video is
+  // opened or closed while minimized (for example, the video ends and the TV app returns to its home screen).
+  let toldHidden = appearsHidden();
+  let passingOn = false;
+  const updateVisibility = () => {
+    const hidden = appearsHidden();
+    if (hidden === toldHidden) return;
+    toldHidden = hidden;
+    passingOn = true;
+    try { document.dispatchEvent(new Event('visibilitychange', { bubbles: true })); } finally { passingOn = false; }
+  };
   ['visibilitychange', 'webkitvisibilitychange'].forEach((name) =>
-    window.addEventListener(name, (event) => event.stopImmediatePropagation(), true));
+    window.addEventListener(name, (event) => {
+      if (passingOn) return;
+      event.stopImmediatePropagation();
+      updateVisibility();
+    }, true));
+  window.addEventListener('hashchange', updateVisibility);
+  setInterval(updateVisibility, 1000);
 
   // ---------- Honest answers about video formats ----------
 

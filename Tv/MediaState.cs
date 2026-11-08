@@ -8,7 +8,10 @@ namespace CastDesk.Tv;
 /// <param name="Artwork">Thumbnail URL, or empty.</param>
 /// <param name="HasNext">The page offers a "next" action.</param>
 /// <param name="HasPrevious">The page offers a "previous" action.</param>
-internal sealed record MediaState(bool HasVideo, bool Playing, string Title, string Artist, string Artwork, bool HasNext, bool HasPrevious)
+/// <param name="Watching">The TV app is on its video page (not the home screen, search and so on).</param>
+/// <param name="Music">YouTube marks the open video as music (a song, music video or podcast episode).</param>
+internal sealed record MediaState(bool HasVideo, bool Playing, string Title, string Artist, string Artwork, bool HasNext, bool HasPrevious,
+    bool Watching = false, bool Music = false)
 {
     public static readonly MediaState Nothing = new(false, false, "", "", "", false, false);
 }

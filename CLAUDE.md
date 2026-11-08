@@ -24,6 +24,13 @@ To inspect the TV app, start CastDesk once with
 `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS="--remote-debugging-port=9333 --remote-debugging-address=127.0.0.1"` and
 drive it over CDP. `POST http://localhost:8765/apps/YouTube` opens the TV app as a phone would.
 
+To check page-bridge.js without stopping the installed copy or making sound, use headless Edge
+(`msedge --headless=new --mute-audio --remote-debugging-port=… --user-data-dir=<temp>`): set the TV user agent with
+CDP `Network.setUserAgentOverride` (the `--user-agent` switch alone gets the desktop site), `Page.enable`, then
+`Page.addScriptToEvaluateOnNewDocument` with a stub `window.chrome.webview` (`postMessage` into an array) followed by
+the bridge, and open `https://www.youtube.com/tv#/watch?v=<id>`. Signed out is fine. Bringing another tab to the front
+(`Target.activateTarget`) makes the page really hidden, for testing the visibility handling.
+
 ## Layout
 
 - `Program.cs`: single instance (mutex `Local\CastDesk.SingleInstance`), the installer's command-line options
@@ -35,10 +42,15 @@ drive it over CDP. `POST http://localhost:8765/apps/YouTube` opens the TV app as
   YouTube sign-in). Opens `youtube.com/tv?<phone's launch data>&additionalDataUrl=...`, and answers the TV app's
   screen-details POST inside WebView2 (`WebResourceRequested`) so the phone can read it from `GET /apps/YouTube`.
 - `Tv/page-bridge.js` (embedded resource): media state for Windows' media controls, F11/Alt+Enter, the Back and
-  Fullscreen overlay buttons. It also keeps the page "visible" while minimized: the TV app unloads its video when the
-  page is hidden, so it would stop until the window is restored. And it says no to impossible formats in
-  `MediaSource.isTypeSupported` (`width=99999`): Chromium says yes to them, and the TV app then stops at 720p.
-- `MainForm.cs`: window, tray menu, fullscreen, hide-to-tray (which unloads the TV app so nothing plays hidden).
+  Fullscreen overlay buttons. It also keeps the page "visible" while hidden (minimized or in the tray) on the
+  `#/watch` page: the TV app unloads its video when the page is hidden. Elsewhere (home screen, search) it passes the
+  real visibility on, so previews stop. It says no to impossible formats in `MediaSource.isTypeSupported`
+  (`width=99999`): Chromium says yes to them, and the TV app then stops at 720p. Its media report includes
+  `watching` and `music` (`getPlayerResponse().videoDetails.musicVideoType` on `#ytlr-player__player-container-player`;
+  the TV app gets its player data through encrypted `initplayback`, so it can't be read from the network).
+- `MainForm.cs`: window, tray menu, fullscreen. The close button (`CloseToTray`) keeps the TV app loaded on a video
+  page: music keeps playing, other videos are paused, and the window comes back when a non-music video plays again.
+  Elsewhere it unloads the TV app (`HideToTray`, also used when casting stops) so nothing plays hidden.
 - `Media/WindowsMediaControls.cs`, `Interop/` (`AudioSessionRenamer`, `AppIdentity`, `ProcessTree`, `WindowTheme`):
   make Windows call the sound and media controls "CastDesk" instead of WebView2 / Unknown app. The media controls
   only resolve the name through the installer's Start menu shortcut with `System.AppUserModel.ID` =
@@ -70,9 +82,9 @@ drive it over CDP. `POST http://localhost:8765/apps/YouTube` opens the TV app as
 - **Don't steal focus without need:** the user may be gaming. Put CastDesk back the way it was (window or tray).
 - **Back up `%LOCALAPPDATA%\CastDesk\settings.json` before tests that change settings**, and restore it after.
 - Don't delete the WebView2 profile: it signs the user out of YouTube.
-- **The user runs the installed copy** (`C:\Program Files\CastDesk`, 2.1.2, started at sign-in). Only one copy can
-  run (single-instance mutex), so to try a dev build: note whether the installed copy is running,
-  `"C:\Program Files\CastDesk\CastDesk.exe" --exit`, test the build, `--exit` it, then start the installed copy
+- **The user runs the installed copy** (`C:\Program Files\CastDesk`, kept on the latest release, started at
+  sign-in). Only one copy can run (single-instance mutex), so to try a dev build: note whether the installed copy is
+  running, `"C:\Program Files\CastDesk\CastDesk.exe" --exit`, test the build, `--exit` it, then start the installed copy
   again with `explorer.exe "C:\Program Files\CastDesk\CastDesk.exe"` (not elevated). Both use the same
   `%LOCALAPPDATA%\CastDesk` data. A dev build shows "Unknown app" in the media controls and gets its own firewall
   prompt (which takes focus), so prefer testing through the installed copy where you can.
@@ -89,8 +101,13 @@ drive it over CDP. `POST http://localhost:8765/apps/YouTube` opens the TV app as
    `CastDesk starting` line after them show it worked.
 
 Releases: v2.0.0 (first, no updater), v2.1.0 (updater), v2.1.1 (shortcut app ID, so the media controls say
-"CastDesk"), v2.1.2 (PR #1 from Niranjen99: keeps playing while minimized, qualities above 720p). The updater worked end to end on the user's PC for 2.1.0 → 2.1.1 (2026-11-07): download and SHA-256
-check, `msiexec /passive`, CastDesk back up 7 s later.
+"CastDesk"), v2.1.2 (PR #1 from Niranjen99: keeps playing while minimized, qualities above 720p), v2.1.3 (music keeps
+playing in the tray, other videos pause and reopen the window; previews stop while minimized). The updater
+worked end to end on the user's PC for 2.1.0 → 2.1.1 (2026-11-07): download and SHA-256 check, `msiexec /passive`,
+CastDesk back up 7 s later.
+
+Outside contributions come as pull requests (PR #1 was the first). Review the diff, merge with a merge commit so the
+contributor's commit keeps their name, then release as above and thank them in the notes.
 
 The installer (`installer/Package.wxs`) is per-machine: Program Files by default, a folder page to choose another,
 the folder kept for upgrades (`HKLM\Software\CastDesk\Installer\InstallFolder`), a firewall rule (local subnet), the
