@@ -42,10 +42,11 @@ public sealed class CastDeskOptions
     public bool CheckForUpdates { get; set; } = true;
 
     /// <summary>
-    /// Show what is playing in Discord (Rich Presence, through the Discord app on this PC). Off by default:
-    /// it shares the titles with the user's Discord friends.
+    /// Show what is playing in Discord (Rich Presence, through the Discord app on this PC). On by default;
+    /// it does nothing unless the Discord desktop app is running. It shares the titles with the user's Discord
+    /// friends, so Settings and the README say so.
     /// </summary>
-    public bool ShowInDiscord { get; set; }
+    public bool ShowInDiscord { get; set; } = true;
 
     /// <summary>
     /// A Chromecast with Google TV running YouTube's TV engine (Cobalt). youtube.com/tv only serves its TV

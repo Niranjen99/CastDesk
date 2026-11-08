@@ -59,7 +59,7 @@ the phone connection are all YouTube's, as on a TV.
   instead of "Microsoft Edge WebView2" and "Unknown app". Media keys work.
 - **Signed in once:** your YouTube sign-in is kept in CastDesk's own browser profile.
 - **Settings window** for the name, window behaviour, starting with Windows, the port and the TV identity.
-- **Shows what's playing in Discord** (optional, off by default): "Listening to" for music, "Watching" for other
+- **Shows what's playing in Discord** (on by default, turn it off in Settings): "Listening to" for music, "Watching" for other
   videos, with the title, channel, thumbnail, time left and a link to the video.
 - **Updates from inside the app:** CastDesk checks GitHub for a new version, and downloads, verifies and installs it.
 
@@ -174,7 +174,7 @@ CastDesk. The general settings and updates are on the left, the advanced ones on
 | Hide the window when casting stops | On | Hides the window to the tray 3 seconds after the phone stops casting. |
 | Start CastDesk when I sign in to Windows | Off (the installer offers to turn it on) | Adds CastDesk to your startup apps, starting quietly in the tray. |
 | Check for updates automatically | On | Checks for a newer release 30 seconds after CastDesk starts (see [Updates](#updates)). |
-| Show what I'm playing in Discord | Off | While a video or song plays, your Discord status shows it: **Listening to** for music, **Watching** for other videos, with the title, channel, thumbnail, a progress bar and a **Listen on YouTube** or **Watch on YouTube** button. Your Discord friends see this. Nothing shows while paused or on the home screen. Needs the Discord app running on this PC; CastDesk connects to it on its own (no sign-in). |
+| Show what I'm playing in Discord | On | While a video or song plays, your Discord status shows it: **Listening to** for music, **Watching** for other videos, with the title, channel, thumbnail, a progress bar and a **Listen on YouTube** or **Watch on YouTube** button. Your Discord friends see this; turn it off if you'd rather they didn't. Nothing shows while paused or on the home screen. Needs the Discord app running on this PC; CastDesk connects to it on its own (no sign-in). |
 | Port phones connect to | 8765 | If Windows has reserved it or another app uses it, CastDesk picks a free one. |
 | TV identity (user agent) YouTube sees | A Chromecast with Google TV | Change it only if YouTube stops showing its TV app; **Use the default** puts it back. |
 
@@ -292,8 +292,8 @@ In the registry:
 ## Privacy and terms
 
 CastDesk has no servers, accounts or analytics; it keeps its settings and log on your PC. The
-[privacy policy](PRIVACY.md) lists what it connects to (your phone, YouTube, GitHub for updates, and Discord if you
-turn that on), and the [terms of service](TERMS.md) cover using it.
+[privacy policy](PRIVACY.md) lists what it connects to (your phone, YouTube, GitHub for updates, and the Discord app
+on your PC while the Discord option is on), and the [terms of service](TERMS.md) cover using it.
 
 ## Building from source
 

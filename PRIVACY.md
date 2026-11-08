@@ -1,6 +1,6 @@
 # CastDesk privacy policy
 
-Last updated: 8 November 2026
+Last updated: 8 November 2026 (Discord status on by default)
 
 CastDesk is a Windows app that lets the YouTube app on your phone cast to your PC. It has no servers, no accounts and
 no analytics: CastDesk itself collects nothing and sends nothing about you to its developer.
@@ -27,7 +27,8 @@ To remove all of it, uninstall CastDesk and delete that folder.
   **Check for updates**, CastDesk asks `api.github.com` for the latest release, and downloads the installer from
   GitHub if you choose to update. GitHub sees your IP address, as with any web request, under
   [GitHub's Privacy Statement](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement).
-- **Discord, only if you turn it on.** With **Show what I'm playing in Discord** on (it is off by default), CastDesk
+- **Discord, while the option is on.** With **Show what I'm playing in Discord** on (it is on by default; turn it
+  off in Settings), and only while the Discord desktop app is running on your PC, CastDesk
   passes the title, channel, thumbnail link, playback time and video link of what's playing to the Discord app on
   your PC, which shows it as your status. Your Discord friends, and others who can see your profile, can see that
   status. Discord handles it under [Discord's Privacy Policy](https://discord.com/privacy). Turning the option off,

@@ -59,8 +59,9 @@ the bridge, and open `https://www.youtube.com/tv#/watch?v=<id>`. Signed out is f
 - `Media/DiscordPresence.cs`: Rich Presence over the Discord app's local pipe (`\\.\pipe\discord-ipc-0`…`9`; frames
   of opcode, length, JSON; handshake, then `SET_ACTIVITY` with a nonce). Application ID `1569019291867816131`
   (Shyam's Discord application; the cover was uploaded there, the small icon is a GitHub raw URL to
-  `docs/discord/discord-icon.png`, so keep that path). Off by default (`ShowInDiscord`). Discord allows ~5 updates per
-  20 s: keep the 4 s spacing and only send when the activity changes (the bridge keeps `startedAt` steady to 2 s).
+  `docs/discord/discord-icon.png`, so keep that path). On by default (`ShowInDiscord`; the user chose this for 2.1.4).
+  Discord allows ~5 updates per 20 s: keep the 4 s spacing and only send when the activity changes (the bridge
+  keeps `startedAt` steady to 2 s).
   Testing it changes the user's real Discord status: keep tests short and clear it afterwards.
 - `Configuration/` (`CastDeskOptions` = `%LOCALAPPDATA%\CastDesk\settings.json`, `DeviceIdentity`,
   `StartupRegistration`), `UI/SettingsForm.cs` (two columns, so it fits 1080p at 150%; keep it from growing taller),
@@ -108,8 +109,8 @@ the bridge, and open `https://www.youtube.com/tv#/watch?v=<id>`. Signed out is f
 
 Releases: v2.0.0 (first, no updater), v2.1.0 (updater), v2.1.1 (shortcut app ID, so the media controls say
 "CastDesk"), v2.1.2 (PR #1 from Niranjen99: keeps playing while minimized, qualities above 720p), v2.1.3 (music keeps
-playing in the tray, other videos pause and reopen the window; previews stop while minimized), v2.1.4 (Discord status, off by
-default). The updater
+playing in the tray, other videos pause and reopen the window; previews stop while minimized), v2.1.4 (Discord
+status, on by default). The updater
 worked end to end on the user's PC for 2.1.0 → 2.1.1 (2026-11-07): download and SHA-256 check, `msiexec /passive`,
 CastDesk back up 7 s later.
 
