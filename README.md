@@ -45,6 +45,9 @@ the phone connection are all YouTube's, as on a TV.
   adapter. The phone's controls work as with a TV: play, pause, seek, next, the queue, and picking another
   video.
 - **Starts in the tray** and comes to the front when you cast; hides again a few seconds after you stop.
+- **Up to 4K** (2160p, up to 60 fps), and **HDR** when HDR is on in Windows' display settings. Pick the quality in
+  the TV app's player settings; Auto may choose 4K even on a smaller screen.
+- **Keeps playing while minimized**, and the phone's controls still work.
 - **Nothing plays in the background:** hiding the window unloads the TV app.
 - **Fullscreen** with F11, Alt+Enter or a button, and a **Back** button for the TV app.
 - **Named "CastDesk" in Windows:** in the volume mixer and the media controls (with title, play/pause and next/previous),

@@ -70,7 +70,7 @@ drive it over CDP. `POST http://localhost:8765/apps/YouTube` opens the TV app as
 - **Don't steal focus without need:** the user may be gaming. Put CastDesk back the way it was (window or tray).
 - **Back up `%LOCALAPPDATA%\CastDesk\settings.json` before tests that change settings**, and restore it after.
 - Don't delete the WebView2 profile: it signs the user out of YouTube.
-- **The user runs the installed copy** (`C:\Program Files\CastDesk`, 2.1.1, started at sign-in). Only one copy can
+- **The user runs the installed copy** (`C:\Program Files\CastDesk`, 2.1.2, started at sign-in). Only one copy can
   run (single-instance mutex), so to try a dev build: note whether the installed copy is running,
   `"C:\Program Files\CastDesk\CastDesk.exe" --exit`, test the build, `--exit` it, then start the installed copy
   again with `explorer.exe "C:\Program Files\CastDesk\CastDesk.exe"` (not elevated). Both use the same
@@ -89,7 +89,7 @@ drive it over CDP. `POST http://localhost:8765/apps/YouTube` opens the TV app as
    `CastDesk starting` line after them show it worked.
 
 Releases: v2.0.0 (first, no updater), v2.1.0 (updater), v2.1.1 (shortcut app ID, so the media controls say
-"CastDesk"). The updater worked end to end on the user's PC for 2.1.0 → 2.1.1 (2026-11-07): download and SHA-256
+"CastDesk"), v2.1.2 (PR #1 from Niranjen99: keeps playing while minimized, qualities above 720p). The updater worked end to end on the user's PC for 2.1.0 → 2.1.1 (2026-11-07): download and SHA-256
 check, `msiexec /passive`, CastDesk back up 7 s later.
 
 The installer (`installer/Package.wxs`) is per-machine: Program Files by default, a folder page to choose another,
