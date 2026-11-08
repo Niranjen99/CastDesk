@@ -1,5 +1,7 @@
 // Injected into YouTube's TV app by CastDesk. It:
 //   - reports what is playing, for Windows' media controls, and carries out their buttons;
+//   - keeps the page "visible" while the window is minimized, so the TV app keeps playing;
+//   - answers the TV app's format questions as a TV would, so it offers qualities above 720p;
 //   - catches F11 and Alt+Enter (WebView2 keeps keys to itself, so CastDesk's window never sees them);
 //   - shows Back (top-left) and Fullscreen (top-right) buttons while the mouse moves.
 //
@@ -58,6 +60,53 @@
   ['play', 'pause', 'playing', 'ended', 'emptied', 'loadedmetadata'].forEach((name) =>
     document.addEventListener(name, report, true));
   setInterval(report, 1000);
+
+  // ---------- Keep playing while minimized ----------
+
+  // A minimized window makes the page hidden, and the TV app then unloads its video until the page is
+  // visible again (a TV app is only hidden when the user has left it). Closing the window still stops
+  // playback: CastDesk unloads the page. This script runs before the page's own, so its listener runs
+  // first and the TV app never sees the event.
+  Object.defineProperty(document, 'hidden', { configurable: true, get: () => false });
+  Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'visible' });
+  Object.defineProperty(document, 'webkitHidden', { configurable: true, get: () => false });
+  Object.defineProperty(document, 'webkitVisibilityState', { configurable: true, get: () => 'visible' });
+  ['visibilitychange', 'webkitvisibilitychange'].forEach((name) =>
+    window.addEventListener(name, (event) => event.stopImmediatePropagation(), true));
+
+  // ---------- Honest answers about video formats ----------
+
+  // The TV app asks whether formats are supported with extra details (width=3840) and with impossible ones
+  // (width=99999) to see if the answers can be trusted. Chromium ignores those details and says yes to
+  // both, and the TV app then offers nothing above 720p. A TV says no to the impossible ones, so do the same.
+  const browserIsTypeSupported = MediaSource.isTypeSupported.bind(MediaSource);
+  const isPossibleDetail = (name, value) => {
+    const number = Number(value);
+    switch (name) {
+      case 'width': return number > 0 && number <= 7680;
+      case 'height': return number > 0 && number <= 4320;
+      case 'framerate': return number > 0 && number <= 120;
+      case 'bitrate': return number > 0 && number <= 500000000;
+      case 'channels': return number > 0 && number <= 8;
+      case 'eotf':
+        if (value === 'bt709') return true;
+        return (value === 'smpte2084' || value === 'arib-std-b67') && window.matchMedia('(dynamic-range: high)').matches;
+      case 'cryptoblockformat': return value === 'subsample';
+      case 'decode-to-texture': return value === 'true' || value === 'false';
+      case 'experimental': return value === 'allowed';
+      case 'tunnelmode': return value === 'false';
+      default: return true;
+    }
+  };
+  MediaSource.isTypeSupported = (type) => {
+    if (!browserIsTypeSupported(type)) return false;
+    return String(type).split(';').slice(1).every((detail) => {
+      const separator = detail.indexOf('=');
+      if (separator < 0) return true;
+      return isPossibleDetail(detail.slice(0, separator).trim().toLowerCase(), detail.slice(separator + 1).trim().replace(/"/g, ''));
+    });
+  };
+
 
   // ---------- Fullscreen keys ----------
 
