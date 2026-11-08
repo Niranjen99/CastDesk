@@ -27,6 +27,7 @@ internal sealed class SettingsForm : Form
     private readonly LinkLabel _whatsNewLink = new() { Text = "What's new", AutoSize = true, Margin = new Padding(0, 6, 0, 0) };
     private readonly ProgressBar _downloadProgress = new() { Width = FieldWidth, Height = 12, Visible = false, Margin = new Padding(0, 6, 0, 2) };
     private readonly CheckBox _autoCheckUpdatesBox = new() { Text = "Check for updates automatically", AutoSize = true, Margin = new Padding(0, 6, 0, 0) };
+    private readonly CheckBox _showInDiscordBox = new() { Text = "Show what I'm playing in Discord", AutoSize = true };
 
     private readonly CastDeskOptions _original;
     private CancellationTokenSource? _downloadCancel;
@@ -83,6 +84,11 @@ internal sealed class SettingsForm : Form
 
         var right = Column();
         right.Margin = new Padding(32, 0, 0, 0);
+        right.Controls.Add(Heading("Discord"));
+        right.Controls.Add(_showInDiscordBox);
+        right.Controls.Add(Hint("Your Discord status shows the title, channel and thumbnail while a video or song plays. " +
+            "Needs the Discord app running on this PC."));
+
         right.Controls.Add(Heading("Advanced"));
         right.Controls.Add(Label("Port phones connect to"));
         right.Controls.Add(_portBox);
@@ -111,6 +117,7 @@ internal sealed class SettingsForm : Form
         _portBox.Value = Math.Clamp(current.DialPort, CastDeskOptions.MinimumPort, CastDeskOptions.MaximumPort);
         _userAgentBox.Text = current.EffectiveUserAgent;
         _autoCheckUpdatesBox.Checked = current.CheckForUpdates;
+        _showInDiscordBox.Checked = current.ShowInDiscord;
         ShowUpdateState(FoundUpdate == null
             ? $"You have CastDesk {UpdateService.CurrentVersion}."
             : $"CastDesk {FoundUpdate.Version} is available (you have {UpdateService.CurrentVersion}).");
@@ -266,6 +273,7 @@ internal sealed class SettingsForm : Form
         result.FullscreenOnCast = _fullscreenOnCastBox.Checked;
         result.HideWhenCastingStops = _hideWhenStoppedBox.Checked;
         result.CheckForUpdates = _autoCheckUpdatesBox.Checked;
+        result.ShowInDiscord = _showInDiscordBox.Checked;
         result.DialPort = (int)_portBox.Value;
         // Store an empty value for the default, so a future CastDesk with a newer default picks it up.
         var userAgent = _userAgentBox.Text.Trim();

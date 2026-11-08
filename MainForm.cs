@@ -31,6 +31,7 @@ public sealed class MainForm : Form
     private readonly System.Windows.Forms.Timer _hideAfterStopTimer;
     private readonly System.Windows.Forms.Timer _updateCheckTimer;
     private readonly AudioSessionRenamer _audioSessionRenamer;
+    private readonly DiscordPresence _discord = new();
     private WindowsMediaControls? _mediaControls;
     private CastDeskOptions _options;
     private SettingsForm? _settingsForm;
@@ -64,6 +65,7 @@ public sealed class MainForm : Form
         KeyPreview = true;
 
         _options = options;
+        _discord.Enabled = options.ShowInDiscord;
         _controller = new CastDeskController(options);
 
         _tvApp = new TvAppView { Dock = DockStyle.Fill };
@@ -77,6 +79,7 @@ public sealed class MainForm : Form
         {
             _mediaState = state;
             _mediaControls?.Show(state);
+            _discord.Show(state);
             if (_inTrayWithVideo) OnMediaStateInTray(state);
         };
         _tvApp.FullscreenToggleRequested += (_, _) => ToggleFullscreen();
@@ -283,6 +286,7 @@ public sealed class MainForm : Form
         Hide();
         _tvApp.Unload();
         _mediaControls?.Show(MediaState.Nothing);
+        _discord.Show(MediaState.Nothing);
         _controller.ReportTvAppStopped(); // the phone's next cast launches the TV app again
     }
 
@@ -457,6 +461,7 @@ public sealed class MainForm : Form
             var userAgentChanged = updated.EffectiveUserAgent != _options.EffectiveUserAgent;
             _options = updated;
             _controller.ApplyOptions(updated);
+            _discord.Enabled = updated.ShowInDiscord;
             if (userAgentChanged) _tvApp.ChangeUserAgent(updated.EffectiveUserAgent);
 
             if (problems.Count > 0)
@@ -504,6 +509,7 @@ public sealed class MainForm : Form
             _videoPlayingInTrayTimer.Dispose();
             _leftVideoPageTimer.Dispose();
             _audioSessionRenamer.Dispose();
+            _discord.Dispose(); // closing the connection clears the Discord status
             _trayIcon.ContextMenuStrip?.Dispose();
             _trayIcon.Dispose();
         }

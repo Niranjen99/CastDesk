@@ -1,6 +1,6 @@
 // Injected into YouTube's TV app by CastDesk. It:
-//   - reports what is playing (and whether it is music), for Windows' media controls and for closing to the
-//     tray, and carries out their buttons;
+//   - reports what is playing (and whether it is music), for Windows' media controls, Discord and closing to
+//     the tray, and carries out the media controls' buttons;
 //   - keeps the page "visible" while a video is open and the window is minimized or closed to the tray, so the
 //     TV app keeps playing (home-screen previews still stop);
 //   - answers the TV app's format questions as a TV would, so it offers qualities above 720p;
@@ -8,7 +8,8 @@
 //   - shows Back (top-left) and Fullscreen (top-right) buttons while the mouse moves.
 //
 //   to CastDesk:   {"type":"media","hasVideo":true,"playing":true,"title":"…","artist":"…","artwork":"https://…",
-//                   "hasNext":true,"hasPrevious":false,"watching":true,"music":false}
+//                   "hasNext":true,"hasPrevious":false,"watching":true,"music":false,"videoId":"dQw4w9WgXcQ",
+//                   "startedAt":1762600000000,"endsAt":1762600213000}   (Unix ms; 0 when paused or unknown)
 //                  {"type":"fullscreen"}                 toggle fullscreen (key or button)
 //                  {"type":"back"}                       the Back button: CastDesk presses Esc
 //   from CastDesk: "play" | "pause" | "togglePlay" | "nexttrack" | "previoustrack"
@@ -39,14 +40,37 @@
   // YouTube marks songs, music videos and podcast episodes with a musicVideoType in the player data
   // (MUSIC_VIDEO_TYPE_OMV, _ATV, _UGC, ...); other videos have none. The TV app's player element hands
   // that data out through getPlayerResponse().
-  const isMusic = () => {
-    const player = document.getElementById('ytlr-player__player-container-player');
+  const player = () => document.getElementById('ytlr-player__player-container-player');
+  const callPlayer = (name) => {
+    const element = player();
     try {
-      const response = player && typeof player.getPlayerResponse === 'function' ? player.getPlayerResponse() : null;
-      return !!(response && response.videoDetails && response.videoDetails.musicVideoType);
+      return element && typeof element[name] === 'function' ? element[name]() : null;
     } catch {
-      return false;
+      return null;
     }
+  };
+  const isMusic = () => {
+    const response = callPlayer('getPlayerResponse');
+    return !!(response && response.videoDetails && response.videoDetails.musicVideoType);
+  };
+
+  // The open video's ID and title, from the player (the media session can lag behind a new video).
+  const videoData = () => callPlayer('getVideoData') || {};
+  const videoIdFromAddress = () => {
+    const match = /[?&]v=([A-Za-z0-9_-]{11})/.exec(location.hash);
+    return match ? match[1] : '';
+  };
+
+  // When the current playback started and when it will end (Unix ms, 0 if unknown or paused), for
+  // Discord's progress bar. Kept steady to within 2 s, so only a seek or a new video changes them.
+  let reportedStart = 0;
+  const playbackTimes = (video) => {
+    if (!video || video.paused || video.ended || !isFinite(video.currentTime)) return { startedAt: 0, endsAt: 0 };
+    const rate = video.playbackRate || 1;
+    const start = Date.now() - (video.currentTime * 1000) / rate;
+    if (Math.abs(start - reportedStart) > 2000) reportedStart = Math.round(start / 1000) * 1000;
+    const endsAt = isFinite(video.duration) && video.duration > 0 ? Math.round(reportedStart + (video.duration * 1000) / rate) : 0;
+    return { startedAt: reportedStart, endsAt };
   };
 
   const currentVideo = () => {
@@ -59,17 +83,21 @@
     const video = currentVideo();
     const metadata = mediaSession && mediaSession.metadata;
     const artwork = metadata && metadata.artwork && metadata.artwork.length ? metadata.artwork[metadata.artwork.length - 1].src : '';
+    const watching = isWatching();
+    const data = watching ? videoData() : {};
     const state = {
       type: 'media',
       hasVideo: !!(video && video.currentSrc),
       playing: !!(video && !video.paused && !video.ended),
-      title: (metadata && metadata.title) || '',
-      artist: (metadata && metadata.artist) || '',
+      title: (metadata && metadata.title) || data.title || '',
+      artist: (metadata && metadata.artist) || data.author || '',
       artwork: artwork || '',
       hasNext: typeof actionHandlers.nexttrack === 'function',
       hasPrevious: typeof actionHandlers.previoustrack === 'function',
-      watching: isWatching(),
-      music: isWatching() && isMusic(),
+      watching,
+      music: watching && isMusic(),
+      videoId: watching ? (data.video_id || videoIdFromAddress()) : '',
+      ...playbackTimes(video),
     };
     const text = JSON.stringify(state);
     if (text === lastReport) return;
@@ -77,7 +105,7 @@
     post(state);
   };
 
-  ['play', 'pause', 'playing', 'ended', 'emptied', 'loadedmetadata'].forEach((name) =>
+  ['play', 'pause', 'playing', 'ended', 'emptied', 'loadedmetadata', 'seeked', 'ratechange'].forEach((name) =>
     document.addEventListener(name, report, true));
   setInterval(report, 1000);
 

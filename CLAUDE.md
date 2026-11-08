@@ -56,6 +56,12 @@ the bridge, and open `https://www.youtube.com/tv#/watch?v=<id>`. Signed out is f
   only resolve the name through the installer's Start menu shortcut with `System.AppUserModel.ID` =
   `CastDesk.Receiver` (`ShortcutProperty` in `Package.wxs`); the HKCU registration alone wasn't enough, so dev
   builds still show "Unknown app". Keep the ID the same in both places.
+- `Media/DiscordPresence.cs`: Rich Presence over the Discord app's local pipe (`\\.\pipe\discord-ipc-0`…`9`; frames
+  of opcode, length, JSON; handshake, then `SET_ACTIVITY` with a nonce). Application ID `1569019291867816131`
+  (Shyam's Discord application; the cover was uploaded there, the small icon is a GitHub raw URL to
+  `docs/discord/discord-icon.png`, so keep that path). Off by default (`ShowInDiscord`). Discord allows ~5 updates per
+  20 s: keep the 4 s spacing and only send when the activity changes (the bridge keeps `startedAt` steady to 2 s).
+  Testing it changes the user's real Discord status: keep tests short and clear it afterwards.
 - `Configuration/` (`CastDeskOptions` = `%LOCALAPPDATA%\CastDesk\settings.json`, `DeviceIdentity`,
   `StartupRegistration`), `UI/SettingsForm.cs` (two columns, so it fits 1080p at 150%; keep it from growing taller),
   `Diagnostics/AppLog.cs`.

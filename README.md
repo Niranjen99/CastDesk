@@ -58,6 +58,8 @@ the phone connection are all YouTube's, as on a TV.
   instead of "Microsoft Edge WebView2" and "Unknown app". Media keys work.
 - **Signed in once:** your YouTube sign-in is kept in CastDesk's own browser profile.
 - **Settings window** for the name, window behaviour, starting with Windows, the port and the TV identity.
+- **Shows what's playing in Discord** (optional, off by default): "Listening to" for music, "Watching" for other
+  videos, with the title, channel, thumbnail, time left and a link to the video.
 - **Updates from inside the app:** CastDesk checks GitHub for a new version, and downloads, verifies and installs it.
 
 ## Requirements
@@ -170,6 +172,7 @@ CastDesk. The general settings and updates are on the left, the advanced ones on
 | Hide the window when casting stops | On | Hides the window to the tray 3 seconds after the phone stops casting. |
 | Start CastDesk when I sign in to Windows | Off (the installer offers to turn it on) | Adds CastDesk to your startup apps, starting quietly in the tray. |
 | Check for updates automatically | On | Checks for a newer release 30 seconds after CastDesk starts (see [Updates](#updates)). |
+| Show what I'm playing in Discord | Off | While a video or song plays, your Discord status shows it: **Listening to** for music, **Watching** for other videos, with the title, channel, thumbnail, a progress bar and a **Watch on YouTube** button. Your Discord friends see this. Nothing shows while paused or on the home screen. Needs the Discord app running on this PC; CastDesk connects to it on its own (no sign-in). |
 | Port phones connect to | 8765 | If Windows has reserved it or another app uses it, CastDesk picks a free one. |
 | TV identity (user agent) YouTube sees | A Chromecast with Google TV | Change it only if YouTube stops showing its TV app; **Use the default** puts it back. |
 
@@ -197,7 +200,7 @@ Everything CastDesk keeps is in `%LOCALAPPDATA%\CastDesk`:
 
 | File | What it holds |
 |---|---|
-| `settings.json` | The settings above: `FriendlyName`, `FullscreenOnCast`, `HideWhenCastingStops`, `CheckForUpdates`, `DialPort`, `UserAgent` (empty means the default). Missing fields keep their defaults. |
+| `settings.json` | The settings above: `FriendlyName`, `FullscreenOnCast`, `HideWhenCastingStops`, `CheckForUpdates`, `ShowInDiscord`, `DialPort`, `UserAgent` (empty means the default). Missing fields keep their defaults. |
 | `device-id.txt` | The ID phones remember CastDesk by. Keep it, or phones will list CastDesk twice for a while. |
 | `WebView2\` | The TV app's browser profile, with your YouTube sign-in. Deleting it signs you out. |
 | `castdesk.log` | The log. A new one starts at 1 MB, keeping the previous one as `castdesk.log.old`. |
@@ -243,6 +246,11 @@ In the registry:
    none. Closing the window during music only hides it; closing it during another video hides it and pauses the
    video, and CastDesk shows the window again when that video plays. If the TV app goes back to its home screen
    while CastDesk is in the tray, or the phone disconnects, CastDesk unloads the TV app.
+8. **Discord.** With **Show what I'm playing in Discord** on, CastDesk sets your Discord status through the Discord
+   app's local connection on this PC (Discord's Rich Presence, a named pipe), so nothing goes through another
+   server. The name and cover come from CastDesk's application in Discord's developer portal. The thumbnail is
+   YouTube's, and the small CastDesk icon is loaded from this repository (`docs/discord/discord-icon.png`).
+   Closing the connection (pausing, quitting) clears the status.
 
 ## Troubleshooting
 
@@ -265,6 +273,9 @@ In the registry:
 - **An update didn't install:** CastDesk closes as soon as the installer starts, so if you declined the admin prompt,
   CastDesk isn't running. Start it from the Start menu (it's still the old version) and use **Download and install**
   again.
+- **Nothing shows in Discord:** turn on **Settings… → Discord**, make sure the Discord desktop app is running, and
+  check that **Share my activity** is on in Discord's **Activity Privacy** settings. CastDesk only shows something
+  while a video plays. Lines marked `[discord]` in the log show the connection.
 
 ## Limitations
 
@@ -333,6 +344,7 @@ Tv/
   MediaState.cs        What the TV app is playing
 Media/
   WindowsMediaControls.cs  CastDesk's entry in Windows' media controls
+  DiscordPresence.cs   What's playing as your Discord status (Rich Presence)
 Configuration/
   CastDeskOptions.cs   settings.json loading and defaults
   DeviceIdentity.cs    The device ID phones remember
@@ -352,11 +364,12 @@ Assets/
   CastDesk.ico         Tray, window and Explorer icon
   logo-64.png          README logo (made by tools/readme-shots)
 docs/screenshots/      README screenshots
+docs/discord/          CastDesk's Discord application art (made by tools/make-discord-art.ps1)
 installer/
   Package.wxs          The MSI: install folder, shortcut, firewall rule, startup checkbox, screens
   CastDesk.Installer.wixproj  WiX project (builds CastDesk-<version>-x64.msi)
   build-installer.ps1  Publishes CastDesk and builds the MSI
   make-installer-art.ps1  Draws dialog.bmp and banner.bmp
-tools/                 Helper scripts (README screenshots); see tools/README.md
+tools/                 Helper scripts (README screenshots, Discord art); see tools/README.md
 CLAUDE.md              Notes for working on CastDesk with Claude Code
 ```
