@@ -35,7 +35,9 @@ drive it over CDP. `POST http://localhost:8765/apps/YouTube` opens the TV app as
   YouTube sign-in). Opens `youtube.com/tv?<phone's launch data>&additionalDataUrl=...`, and answers the TV app's
   screen-details POST inside WebView2 (`WebResourceRequested`) so the phone can read it from `GET /apps/YouTube`.
 - `Tv/page-bridge.js` (embedded resource): media state for Windows' media controls, F11/Alt+Enter, the Back and
-  Fullscreen overlay buttons.
+  Fullscreen overlay buttons. It also keeps the page "visible" while minimized: the TV app unloads its video when the
+  page is hidden, so it would stop until the window is restored. And it says no to impossible formats in
+  `MediaSource.isTypeSupported` (`width=99999`): Chromium says yes to them, and the TV app then stops at 720p.
 - `MainForm.cs`: window, tray menu, fullscreen, hide-to-tray (which unloads the TV app so nothing plays hidden).
 - `Media/WindowsMediaControls.cs`, `Interop/` (`AudioSessionRenamer`, `AppIdentity`, `ProcessTree`, `WindowTheme`):
   make Windows call the sound and media controls "CastDesk" instead of WebView2 / Unknown app. The media controls
