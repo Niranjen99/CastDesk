@@ -69,7 +69,7 @@ the phone connection are all YouTube's, as on a TV.
 - Microsoft Edge WebView2 Runtime (included with Windows 11; CastDesk tells you if it's missing)
 - The phone and the PC on the same network
 - The YouTube app on the phone
-- Optional: the Discord desktop app, to show what's playing as your Discord status
+- Optional: the Discord desktop app, to show what's playing as your Discord status (CastDesk 2.1.4 or later)
 
 ## Installing and running
 

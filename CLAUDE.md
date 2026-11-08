@@ -108,7 +108,8 @@ the bridge, and open `https://www.youtube.com/tv#/watch?v=<id>`. Signed out is f
 
 Releases: v2.0.0 (first, no updater), v2.1.0 (updater), v2.1.1 (shortcut app ID, so the media controls say
 "CastDesk"), v2.1.2 (PR #1 from Niranjen99: keeps playing while minimized, qualities above 720p), v2.1.3 (music keeps
-playing in the tray, other videos pause and reopen the window; previews stop while minimized). The updater
+playing in the tray, other videos pause and reopen the window; previews stop while minimized), v2.1.4 (Discord status, off by
+default). The updater
 worked end to end on the user's PC for 2.1.0 → 2.1.1 (2026-11-07): download and SHA-256 check, `msiexec /passive`,
 CastDesk back up 7 s later.
 
