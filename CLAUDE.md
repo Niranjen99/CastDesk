@@ -61,7 +61,9 @@ the bridge, and open `https://www.youtube.com/tv#/watch?v=<id>`. Signed out is f
   (Shyam's Discord application; the cover was uploaded there, the small icon is a GitHub raw URL to
   `docs/discord/discord-icon.png`, so keep that path). On by default (`ShowInDiscord`; the user chose this for 2.1.4).
   Discord allows ~5 updates per 20 s: keep the 4 s spacing and only send when the activity changes (the bridge
-  keeps `startedAt` steady to 2 s).
+  keeps `startedAt` steady to 2 s). `SET_ACTIVITY` needs a nonzero `pid`, and Discord puts its game overlay on that
+  process's window: send the WebView2 browser process (`TvAppView.BrowserProcessId`, windowless), never CastDesk's
+  own ID (with it, the overlay appeared over the player; confirmed gone on the user's PC on 2026-11-08).
   Testing it changes the user's real Discord status: keep tests short and clear it afterwards.
 - `Configuration/` (`CastDeskOptions` = `%LOCALAPPDATA%\CastDesk\settings.json`, `DeviceIdentity`,
   `StartupRegistration`), `UI/SettingsForm.cs` (two columns, so it fits 1080p at 150%; keep it from growing taller),

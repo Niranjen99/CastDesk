@@ -54,7 +54,19 @@ internal sealed partial class DiscordPresence : IDisposable
     private DateTime _lastSent = DateTime.MinValue;
     private bool _reportedUnavailable;
 
-    public DiscordPresence() => _worker = Task.Run(RunAsync);
+    private readonly Func<int?> _playerProcessId;
+
+    /// <param name="playerProcessId">
+    /// The WebView2 browser process, which plays the TV app (null before it starts). Discord needs a process ID
+    /// with each status ("nonzero pid required") and treats that process as a running game: it would put its
+    /// overlay on CastDesk's window if given CastDesk's own ID. The browser process has no window of its own, so
+    /// no overlay appears, and it ends with CastDesk, so Discord still clears the status if CastDesk stops.
+    /// </param>
+    public DiscordPresence(Func<int?> playerProcessId)
+    {
+        _playerProcessId = playerProcessId;
+        _worker = Task.Run(RunAsync);
+    }
 
     /// <summary>Whether to show anything (Settings → Discord). Turning it off clears the status.</summary>
     public bool Enabled
@@ -256,7 +268,7 @@ internal sealed partial class DiscordPresence : IDisposable
             ["cmd"] = "SET_ACTIVITY",
             ["args"] = new JsonObject
             {
-                ["pid"] = Environment.ProcessId,
+                ["pid"] = _playerProcessId() ?? Environment.ProcessId,
                 ["activity"] = activityJson == null ? null : JsonNode.Parse(activityJson),
             },
             ["nonce"] = nonce,

@@ -254,7 +254,9 @@ In the registry:
    YouTube's, and the small CastDesk icon is loaded from this repository (`docs/discord/discord-icon.png`).
    Pausing, going back to the home screen or turning the option off clears the status, and quitting CastDesk
    closes the connection, which clears it too. Discord accepts only a few updates per 20 seconds, so CastDesk sends
-   one only when something changes (a new video, play or pause, a seek).
+   one only when something changes (a new video, play or pause, a seek). Discord links each status to a running
+   process and treats it as a game; CastDesk names its windowless WebView2 process, so Discord's game overlay doesn't
+   appear over the player window.
 
 ## Troubleshooting
 
@@ -280,6 +282,8 @@ In the registry:
 - **Nothing shows in Discord:** turn on **Settings… → Discord**, make sure the Discord desktop app is running, and
   check that **Share my activity** is on in Discord's **Activity Privacy** settings. CastDesk only shows something
   while a video plays. Lines marked `[discord]` in the log show the connection.
+- **Discord's overlay appears over CastDesk:** CastDesk 2.1.4 avoids it. If you still see it, turn the overlay off
+  for CastDesk in Discord's **Game Overlay** (or **Registered Games**) settings.
 
 ## Limitations
 

@@ -31,7 +31,7 @@ public sealed class MainForm : Form
     private readonly System.Windows.Forms.Timer _hideAfterStopTimer;
     private readonly System.Windows.Forms.Timer _updateCheckTimer;
     private readonly AudioSessionRenamer _audioSessionRenamer;
-    private readonly DiscordPresence _discord = new();
+    private readonly DiscordPresence _discord;
     private WindowsMediaControls? _mediaControls;
     private CastDeskOptions _options;
     private SettingsForm? _settingsForm;
@@ -65,10 +65,10 @@ public sealed class MainForm : Form
         KeyPreview = true;
 
         _options = options;
-        _discord.Enabled = options.ShowInDiscord;
         _controller = new CastDeskController(options);
 
         _tvApp = new TvAppView { Dock = DockStyle.Fill };
+        _discord = new DiscordPresence(() => _tvApp.BrowserProcessId) { Enabled = options.ShowInDiscord };
         _tvApp.ScreenInfoReported += (_, details) => _controller.ReportScreenInfo(details);
         _tvApp.ExitRequested += (_, _) =>
         {
