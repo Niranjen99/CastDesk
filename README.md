@@ -30,6 +30,7 @@
 - [How it works](#how-it-works)
 - [Troubleshooting](#troubleshooting)
 - [Limitations](#limitations)
+- [Privacy and terms](#privacy-and-terms)
 - [Building from source](#building-from-source)
 - [Project structure](#project-structure)
 
@@ -68,6 +69,7 @@ the phone connection are all YouTube's, as on a TV.
 - Microsoft Edge WebView2 Runtime (included with Windows 11; CastDesk tells you if it's missing)
 - The phone and the PC on the same network
 - The YouTube app on the phone
+- Optional: the Discord desktop app, to show what's playing as your Discord status
 
 ## Installing and running
 
@@ -172,7 +174,7 @@ CastDesk. The general settings and updates are on the left, the advanced ones on
 | Hide the window when casting stops | On | Hides the window to the tray 3 seconds after the phone stops casting. |
 | Start CastDesk when I sign in to Windows | Off (the installer offers to turn it on) | Adds CastDesk to your startup apps, starting quietly in the tray. |
 | Check for updates automatically | On | Checks for a newer release 30 seconds after CastDesk starts (see [Updates](#updates)). |
-| Show what I'm playing in Discord | Off | While a video or song plays, your Discord status shows it: **Listening to** for music, **Watching** for other videos, with the title, channel, thumbnail, a progress bar and a **Watch on YouTube** button. Your Discord friends see this. Nothing shows while paused or on the home screen. Needs the Discord app running on this PC; CastDesk connects to it on its own (no sign-in). |
+| Show what I'm playing in Discord | Off | While a video or song plays, your Discord status shows it: **Listening to** for music, **Watching** for other videos, with the title, channel, thumbnail, a progress bar and a **Listen on YouTube** or **Watch on YouTube** button. Your Discord friends see this. Nothing shows while paused or on the home screen. Needs the Discord app running on this PC; CastDesk connects to it on its own (no sign-in). |
 | Port phones connect to | 8765 | If Windows has reserved it or another app uses it, CastDesk picks a free one. |
 | TV identity (user agent) YouTube sees | A Chromecast with Google TV | Change it only if YouTube stops showing its TV app; **Use the default** puts it back. |
 
@@ -250,7 +252,9 @@ In the registry:
    app's local connection on this PC (Discord's Rich Presence, a named pipe), so nothing goes through another
    server. The name and cover come from CastDesk's application in Discord's developer portal. The thumbnail is
    YouTube's, and the small CastDesk icon is loaded from this repository (`docs/discord/discord-icon.png`).
-   Closing the connection (pausing, quitting) clears the status.
+   Pausing, going back to the home screen or turning the option off clears the status, and quitting CastDesk
+   closes the connection, which clears it too. Discord accepts only a few updates per 20 seconds, so CastDesk sends
+   one only when something changes (a new video, play or pause, a seek).
 
 ## Troubleshooting
 
@@ -284,6 +288,12 @@ In the registry:
 - **No screen mirroring.** Windows' Miracast receiver API can't be used from a desktop app, and iPhone (AirPlay) and
   Pixel (Google Cast) mirroring would need their protocols reverse-engineered.
 - **Google Cast apps other than YouTube** don't see CastDesk: it's a DIAL receiver, not a Chromecast.
+
+## Privacy and terms
+
+CastDesk has no servers, accounts or analytics; it keeps its settings and log on your PC. The
+[privacy policy](PRIVACY.md) lists what it connects to (your phone, YouTube, GitHub for updates, and Discord if you
+turn that on), and the [terms of service](TERMS.md) cover using it.
 
 ## Building from source
 
@@ -371,5 +381,6 @@ installer/
   build-installer.ps1  Publishes CastDesk and builds the MSI
   make-installer-art.ps1  Draws dialog.bmp and banner.bmp
 tools/                 Helper scripts (README screenshots, Discord art); see tools/README.md
+PRIVACY.md, TERMS.md   Privacy policy and terms of service (also linked from CastDesk's Discord application)
 CLAUDE.md              Notes for working on CastDesk with Claude Code
 ```

@@ -129,6 +129,8 @@ publish only when the user asks.
 - README screenshots are in `docs/screenshots`: retake them with `tools/readme-shots` when the UI changes. The player
   window isn't screenshotted (opening the TV app plays sound).
 - Write user-facing text and docs in plain, specific English.
+- `PRIVACY.md` and `TERMS.md` are linked from CastDesk's Discord application (Developer Portal). Keep their paths, and
+  update `PRIVACY.md` (and its date) whenever CastDesk starts connecting to something new or storing something new.
 - In this environment, write commit messages to a file and use `git commit -F` (Windows PowerShell adds a BOM
   otherwise). Python one-liners and heredocs have turned `\b`, `\r` and `\n` in paths into control characters here:
   edit text containing backslashes with the Edit tool, and grep for control characters after scripted edits.
