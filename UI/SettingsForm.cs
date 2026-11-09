@@ -67,6 +67,8 @@ internal sealed class SettingsForm : Form
         left.Controls.Add(_fullscreenOnCastBox);
         left.Controls.Add(_hideWhenStoppedBox);
         left.Controls.Add(_keepPlayingBox);
+        left.Controls.Add(Hint("Turn this off only if you cast from YouTube Music. In the YouTube app, tapping a new video " +
+            "disconnects the phone, so the cast would stop too."));
 
         left.Controls.Add(Heading("Startup"));
         left.Controls.Add(_startWithWindowsBox);
